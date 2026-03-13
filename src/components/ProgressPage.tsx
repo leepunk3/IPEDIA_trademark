@@ -47,6 +47,19 @@ type ApiResponse = {
   payment?: PaymentInfo;
 };
 
+type UploadSummary = {
+  totalCount: number;
+  hasPowerOfAttorney: boolean;
+};
+
+type UploadItem = {
+  created_at?: string;
+  upload_type: string;
+  file_name: string;
+  file_url: string;
+  upload_status: string;
+};
+
 function getTokenFromUrl() {
   if (typeof window === "undefined") return "";
   const params = new URLSearchParams(window.location.search);
@@ -663,4 +676,5 @@ export default function ProgressPage() {
       )}
     </div>
   );
+
 }
