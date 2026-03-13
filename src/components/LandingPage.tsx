@@ -61,7 +61,7 @@ export default function LandingPage() {
 
       const result = await response.json()
 
-      if(result.result==="success"){
+      if(result?.success){
         setSuccessMessage("신청이 접수되었습니다. 이메일을 확인해주세요.")
         setChannelInput("")
         setInterestType("")
