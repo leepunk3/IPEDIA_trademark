@@ -1,0 +1,25 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Noto Sans KR", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-primary: #1a2b4c;
+  --color-accent: #ff4d00;
+  --color-secondary: #333333;
+  --color-muted: #666666;
+  --color-bg-light: #f8f9fa;
+  --color-border-light: #eaeaea;
+}
+
+body {
+  font-family: var(--font-sans);
+  color: var(--color-secondary);
+  background-color: #ffffff;
+  -webkit-font-smoothing: antialiased;
+  word-break: keep-all;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--color-primary);
+  letter-spacing: -0.025em;
+}
