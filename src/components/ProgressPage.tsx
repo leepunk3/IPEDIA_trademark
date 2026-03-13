@@ -675,86 +675,86 @@ export default function ProgressPage() {
       )}
 
       {step === "upload" && (
-  <div className="space-y-6">
-    <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-      <h2 className="mb-3 text-2xl font-bold text-gray-900">위임장 / 자료 업로드</h2>
-      <p className="mb-6 text-gray-600">
-        결제가 완료되었습니다. 출원 진행을 위해 위임장 또는 필요한 자료를 업로드해 주세요.
-      </p>
+        <div className="space-y-6">
+          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h2 className="mb-3 text-2xl font-bold text-gray-900">위임장 / 자료 업로드</h2>
+            <p className="mb-6 text-gray-600">
+              결제가 완료되었습니다. 출원 진행을 위해 위임장 또는 필요한 자료를 업로드해 주세요.
+            </p>
 
-      <form onSubmit={handleUploadSubmit} className="space-y-5">
-        <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">자료 종류</label>
-          <select
-            value={uploadType}
-            onChange={(e) => setUploadType(e.target.value)}
-            className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
-          >
-            <option value="POWER_OF_ATTORNEY">위임장</option>
-            <option value="BUSINESS_CERTIFICATE">사업자등록증</option>
-            <option value="LOGO_FILE">로고 파일</option>
-            <option value="CHARACTER_IMAGE">캐릭터 이미지</option>
-            <option value="DESIGN_IMAGE">디자인 이미지</option>
-            <option value="OTHER">기타</option>
-          </select>
-        </div>
+            <form onSubmit={handleUploadSubmit} className="space-y-5">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">자료 종류</label>
+                <select
+                  value={uploadType}
+                  onChange={(e) => setUploadType(e.target.value)}
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
+                >
+                  <option value="POWER_OF_ATTORNEY">위임장</option>
+                  <option value="BUSINESS_CERTIFICATE">사업자등록증</option>
+                  <option value="LOGO_FILE">로고 파일</option>
+                  <option value="CHARACTER_IMAGE">캐릭터 이미지</option>
+                  <option value="DESIGN_IMAGE">디자인 이미지</option>
+                  <option value="OTHER">기타</option>
+                </select>
+              </div>
 
-        <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">파일명</label>
-          <input
-            value={fileName}
-            onChange={(e) => setFileName(e.target.value)}
-            placeholder="예: 위임장_홍길동.pdf"
-            className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
-          />
-        </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">파일명</label>
+                <input
+                  value={fileName}
+                  onChange={(e) => setFileName(e.target.value)}
+                  placeholder="예: 위임장_홍길동.pdf"
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
+                />
+              </div>
 
-        <div>
-          <label className="mb-2 block text-sm font-medium text-gray-700">파일 링크</label>
-          <input
-            value={fileUrl}
-            onChange={(e) => setFileUrl(e.target.value)}
-            placeholder="Google Drive / Dropbox / 기타 파일 링크"
-            className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
-          />
-        </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">파일 링크</label>
+                <input
+                  value={fileUrl}
+                  onChange={(e) => setFileUrl(e.target.value)}
+                  placeholder="Google Drive / Dropbox / 기타 파일 링크"
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
+                />
+              </div>
 
-        <button
-          type="submit"
-          disabled={uploadLoading}
-          className="w-full rounded-2xl bg-black px-6 py-4 text-base font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {uploadLoading ? "저장 중..." : "자료 업로드 등록하기"}
-        </button>
-      </form>
-    </section>
-
-    <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-      <h3 className="mb-4 text-xl font-bold text-gray-900">업로드된 자료</h3>
-
-      {uploads.length === 0 ? (
-        <p className="text-sm text-gray-600">아직 등록된 자료가 없습니다.</p>
-      ) : (
-        <div className="space-y-3">
-          {uploads.map((item, idx) => (
-            <div key={idx} className="rounded-xl bg-gray-50 p-4">
-              <div className="text-sm text-gray-500">{item.upload_type}</div>
-              <div className="mt-1 font-semibold text-gray-900">{item.file_name}</div>
-              <a
-                href={item.file_url}
-                target="_blank"
-                rel="noreferrer"
-                className="mt-1 block break-all text-sm text-blue-600 underline"
+              <button
+                type="submit"
+                disabled={uploadLoading}
+                className="w-full rounded-2xl bg-black px-6 py-4 text-base font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {item.file_url}
-              </a>
-            </div>
-          ))}
+                {uploadLoading ? "저장 중..." : "자료 업로드 등록하기"}
+              </button>
+            </form>
+          </section>
+
+          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h3 className="mb-4 text-xl font-bold text-gray-900">업로드된 자료</h3>
+
+            {uploads.length === 0 ? (
+              <p className="text-sm text-gray-600">아직 등록된 자료가 없습니다.</p>
+            ) : (
+              <div className="space-y-3">
+                {uploads.map((item, idx) => (
+                  <div key={idx} className="rounded-xl bg-gray-50 p-4">
+                    <div className="text-sm text-gray-500">{item.upload_type}</div>
+                    <div className="mt-1 font-semibold text-gray-900">{item.file_name}</div>
+                    <a
+                      href={item.file_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-1 block break-all text-sm text-blue-600 underline"
+                    >
+                      {item.file_url}
+                    </a>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
         </div>
       )}
-    </section>
-  </div>
-)}
       
       {step === "done" && (
         <div className="rounded-2xl border border-green-200 bg-green-50 p-8 shadow-sm">
@@ -768,5 +768,6 @@ export default function ProgressPage() {
   );
 
 }
+
 
 
