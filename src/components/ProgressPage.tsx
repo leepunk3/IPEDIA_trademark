@@ -100,7 +100,7 @@ export default function ProgressPage() {
   const [submitMessage, setSubmitMessage] = useState("");
 
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
-  const [step, setStep] = useState<"form" | "payment" | "done">("form");
+  const [step, setStep] = useState<"form" | "payment" | "upload" | "done">("form");
 
   const [form, setForm] = useState<FormState>({
     applicant_type: "",
@@ -119,6 +119,14 @@ export default function ProgressPage() {
     design_product_name: "",
   });
 
+  const [uploadSummary, setUploadSummary] = useState<UploadSummary | null>(null);
+  const [uploads, setUploads] = useState<UploadItem[]>([]);
+
+  const [uploadType, setUploadType] = useState("POWER_OF_ATTORNEY");
+  const [fileName, setFileName] = useState("");
+  const [fileUrl, setFileUrl] = useState("");
+  const [uploadLoading, setUploadLoading] = useState(false);
+  
   useEffect(() => {
     const t = getTokenFromUrl();
     setToken(t);
@@ -678,3 +686,4 @@ export default function ProgressPage() {
   );
 
 }
+
