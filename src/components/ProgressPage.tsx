@@ -22,6 +22,19 @@ type PaymentInfo = {
   paid_at?: string;
 };
 
+type UploadSummary = {
+  totalCount: number;
+  hasPowerOfAttorney: boolean;
+};
+
+type UploadItem = {
+  created_at?: string;
+  upload_type: string;
+  file_name: string;
+  file_url: string;
+  upload_status: string;
+};
+
 type FormState = {
   applicant_type: "개인" | "개인사업자" | "법인" | "";
   applicant_name: string;
@@ -45,19 +58,10 @@ type ApiResponse = {
   data?: any;
   already_submitted?: boolean;
   payment?: PaymentInfo;
-};
-
-type UploadSummary = {
-  totalCount: number;
-  hasPowerOfAttorney: boolean;
-};
-
-type UploadItem = {
-  created_at?: string;
-  upload_type: string;
-  file_name: string;
-  file_url: string;
-  upload_status: string;
+  upload_summary?: UploadSummary;
+  uploads?: UploadItem[];
+  file_url?: string;
+  file_id?: string;
 };
 
 function getTokenFromUrl() {
@@ -80,8 +84,12 @@ function getStageLabel(stage?: string) {
       return "결제 대기";
     case "PAYMENT_COMPLETED":
       return "결제 완료";
+    case "WAITING_UPLOAD":
+      return "자료 업로드 대기";
     case "READY_FOR_FILING":
       return "출원 준비 가능";
+    case "FILED":
+      return "출원 완료";
     default:
       return "진행 중";
   }
@@ -91,16 +99,24 @@ export default function ProgressPage() {
   const [token, setToken] = useState("");
   const [pageData, setPageData] = useState<PageData | null>(null);
   const [payment, setPayment] = useState<PaymentInfo | null>(null);
+  const [uploadSummary, setUploadSummary] = useState<UploadSummary | null>(null);
+
+  const [uploads, setUploads] = useState<UploadItem[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [uploadLoading, setUploadLoading] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState("");
   const [submitMessage, setSubmitMessage] = useState("");
 
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [step, setStep] = useState<"form" | "payment" | "upload" | "done">("form");
+
+  const [uploadType, setUploadType] = useState("POWER_OF_ATTORNEY");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileName, setFileName] = useState("");
 
   const [form, setForm] = useState<FormState>({
     applicant_type: "",
@@ -119,14 +135,6 @@ export default function ProgressPage() {
     design_product_name: "",
   });
 
-  const [uploadSummary, setUploadSummary] = useState<UploadSummary | null>(null);
-  const [uploads, setUploads] = useState<UploadItem[]>([]);
-
-  const [uploadType, setUploadType] = useState("POWER_OF_ATTORNEY");
-  const [fileName, setFileName] = useState("");
-  const [fileUrl, setFileUrl] = useState("");
-  const [uploadLoading, setUploadLoading] = useState(false);
-  
   useEffect(() => {
     const t = getTokenFromUrl();
     setToken(t);
@@ -152,13 +160,6 @@ export default function ProgressPage() {
 
         const result: ApiResponse = await res.json();
 
-        const uploadInfo = result.upload_summary || {
-          totalCount: 0,
-          hasPowerOfAttorney: false
-        };
-
-        setUploadSummary(uploadInfo);
-
         if (!result.success) {
           setErrorMessage(result.message || "진행 정보를 불러오지 못했습니다.");
           setLoading(false);
@@ -167,43 +168,61 @@ export default function ProgressPage() {
 
         const data = result.data || {};
         const paymentInfo = result.payment || { exists: false };
+        const uploadInfo = result.upload_summary || {
+          totalCount: 0,
+          hasPowerOfAttorney: false,
+        };
 
         setPageData(data);
         setPayment(paymentInfo);
+        setUploadSummary(uploadInfo);
         setAlreadySubmitted(!!result.already_submitted);
 
         if (paymentInfo.exists && paymentInfo.payment_status === "PAID") {
-
           if (uploadInfo.hasPowerOfAttorney) {
-            setStep("done")
+            setStep("done");
           } else {
-            setStep("upload")
+            setStep("upload");
           }
-
         } else if (result.already_submitted) {
-
-          setStep("payment")
-
+          setStep("payment");
         } else {
-
-          setStep("form")
-
+          setStep("form");
         }
 
-      } catch (err) {
-        setErrorMessage("진행 정보를 불러오는 중 오류")
+        setForm((prev) => ({
+          ...prev,
+          applicant_name: data.channel_name || "",
+          email: data.email || "",
+          trademark_name: data.channel_name || "",
+        }));
+      } catch (error) {
+        setErrorMessage("진행 정보를 불러오는 중 오류가 발생했습니다.");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-
-    }
+    };
 
     load();
   }, []);
 
-  const isRepresentativeVisible = useMemo(() => form.applicant_type === "법인", [form.applicant_type]);
-  const isApplicantCodeInputVisible = useMemo(() => form.applicant_code_status === "있음", [form.applicant_code_status]);
-  const isApplicantCodeRequestVisible = useMemo(() => form.applicant_code_status === "없음", [form.applicant_code_status]);
+  useEffect(() => {
+    if (step === "upload" && token) {
+      loadUploads();
+    }
+  }, [step, token]);
+
+  const isRepresentativeVisible = useMemo(() => {
+    return form.applicant_type === "법인";
+  }, [form.applicant_type]);
+
+  const isApplicantCodeInputVisible = useMemo(() => {
+    return form.applicant_code_status === "있음";
+  }, [form.applicant_code_status]);
+
+  const isApplicantCodeRequestVisible = useMemo(() => {
+    return form.applicant_code_status === "없음";
+  }, [form.applicant_code_status]);
 
   const updateField = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -237,6 +256,21 @@ export default function ProgressPage() {
       return "출원인 코드가 있다고 선택한 경우 출원인 코드를 입력해 주세요.";
     }
     return "";
+  };
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        const result = reader.result as string;
+        const base64 = result.split(",")[1];
+        resolve(base64);
+      };
+
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   };
 
   const handleApplicantSubmit = async (e: React.FormEvent) => {
@@ -301,6 +335,7 @@ export default function ProgressPage() {
     });
 
     const result: ApiResponse = await res.json();
+
     if (result.success) {
       setPayment({
         exists: true,
@@ -343,12 +378,97 @@ export default function ProgressPage() {
         payment_method: "bank_transfer",
       }));
 
-      setStep("done");
-      setSubmitMessage("결제 완료 처리되었습니다.");
+      setStep("upload");
+      setSubmitMessage("결제가 완료되었습니다. 이제 위임장/자료를 업로드해 주세요.");
     } catch (error) {
       setErrorMessage("결제 완료 처리 중 오류가 발생했습니다.");
     } finally {
       setPaymentLoading(false);
+    }
+  };
+
+  const loadUploads = async () => {
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8",
+        },
+        body: JSON.stringify({
+          action: "getUploadStatus",
+          token,
+        }),
+      });
+
+      const result: ApiResponse = await res.json();
+
+      if (result.success) {
+        setUploads(result.uploads || []);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleUploadSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage("");
+    setSubmitMessage("");
+
+    if (!selectedFile) {
+      setErrorMessage("파일을 선택해 주세요.");
+      return;
+    }
+
+    const maxSize = 10 * 1024 * 1024;
+    if (selectedFile.size > maxSize) {
+      setErrorMessage("파일 크기는 10MB 이하만 업로드 가능합니다.");
+      return;
+    }
+
+    setUploadLoading(true);
+
+    try {
+      const base64 = await fileToBase64(selectedFile);
+
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8",
+        },
+        body: JSON.stringify({
+          action: "uploadFile",
+          token,
+          upload_type: uploadType,
+          file_name: selectedFile.name,
+          mime_type: selectedFile.type || "application/octet-stream",
+          file_data: base64,
+        }),
+      });
+
+      const result: ApiResponse = await res.json();
+
+      if (!result.success) {
+        setErrorMessage(result.message || "파일 업로드에 실패했습니다.");
+        return;
+      }
+
+      setSubmitMessage(result.message || "파일이 정상적으로 업로드되었습니다.");
+      setSelectedFile(null);
+      setFileName("");
+
+      const input = document.getElementById("real-file-upload") as HTMLInputElement | null;
+      if (input) input.value = "";
+
+      await loadUploads();
+
+      if (uploadType === "POWER_OF_ATTORNEY") {
+        setStep("done");
+      }
+    } catch (error) {
+      setErrorMessage("파일 업로드 중 오류가 발생했습니다.");
+    } finally {
+      setUploadLoading(false);
     }
   };
 
@@ -638,9 +758,7 @@ export default function ProgressPage() {
         <div className="space-y-6">
           <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
             <h2 className="mb-3 text-2xl font-bold text-gray-900">결제 안내</h2>
-            <p className="mb-6 text-gray-600">
-              출원 진행을 위해 결제를 진행해 주세요.
-            </p>
+            <p className="mb-6 text-gray-600">출원 진행을 위해 결제를 진행해 주세요.</p>
 
             <div className="grid gap-4">
               <div className="rounded-xl bg-gray-50 p-4">
@@ -651,14 +769,16 @@ export default function ProgressPage() {
               <div className="rounded-xl bg-gray-50 p-4">
                 <div className="text-sm text-gray-500">결제 금액</div>
                 <div className="mt-1 font-semibold text-gray-900">
-                  {payment?.payment_amount ? `${Number(payment.payment_amount).toLocaleString()}원` : "330,000원"}
+                  {payment?.payment_amount
+                    ? `${Number(payment.payment_amount).toLocaleString()}원`
+                    : "330,000원"}
                 </div>
               </div>
 
               <div className="rounded-xl bg-gray-50 p-4">
                 <div className="text-sm text-gray-500">입금 계좌</div>
-                <div className="mt-1 font-semibold text-gray-900">국민은행 693001-00-056923</div>
-                <div className="mt-1 text-sm text-gray-700">예금주: 특허법인성암</div>
+                <div className="mt-1 font-semibold text-gray-900">국민은행 123456-78-123456</div>
+                <div className="mt-1 text-sm text-gray-700">예금주: 아이디어블 변리사사무소</div>
               </div>
             </div>
           </section>
@@ -712,22 +832,30 @@ export default function ProgressPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">파일명</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">파일 선택</label>
                 <input
-                  value={fileName}
-                  onChange={(e) => setFileName(e.target.value)}
-                  placeholder="예: 위임장_홍길동.pdf"
+                  id="real-file-upload"
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setSelectedFile(file);
+                    setFileName(file ? file.name : "");
+                  }}
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                 />
+                <p className="mt-2 text-sm text-gray-500">
+                  PDF, PNG, JPG, JPEG 파일 업로드 가능 / 10MB 이하 권장
+                </p>
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">파일 링크</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">선택된 파일명</label>
                 <input
-                  value={fileUrl}
-                  onChange={(e) => setFileUrl(e.target.value)}
-                  placeholder="Google Drive / Dropbox / 기타 파일 링크"
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
+                  value={fileName}
+                  readOnly
+                  placeholder="선택된 파일이 표시됩니다"
+                  className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 outline-none"
                 />
               </div>
 
@@ -736,7 +864,7 @@ export default function ProgressPage() {
                 disabled={uploadLoading}
                 className="w-full rounded-2xl bg-black px-6 py-4 text-base font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {uploadLoading ? "저장 중..." : "자료 업로드 등록하기"}
+                {uploadLoading ? "저장 중..." : "파일 업로드하기"}
               </button>
             </form>
           </section>
@@ -765,20 +893,31 @@ export default function ProgressPage() {
               </div>
             )}
           </section>
+
+          {errorMessage && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {errorMessage}
+            </div>
+          )}
+
+          {submitMessage && !errorMessage && (
+            <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+              {submitMessage}
+            </div>
+          )}
         </div>
       )}
-      
+
       {step === "done" && (
         <div className="rounded-2xl border border-green-200 bg-green-50 p-8 shadow-sm">
-          <h2 className="mb-3 text-2xl font-bold text-green-800">결제가 완료되었습니다</h2>
+          <h2 className="mb-3 text-2xl font-bold text-green-800">출원 준비 자료가 접수되었습니다</h2>
           <p className="text-green-800">
-            결제 확인 후 다음 단계인 위임장/자료 업로드로 진행됩니다.
+            위임장/자료가 정상적으로 등록되었습니다. 확인 후 출원 준비 단계로 진행됩니다.
           </p>
         </div>
       )}
     </div>
   );
-
 }
 
 
