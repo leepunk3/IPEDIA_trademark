@@ -152,6 +152,13 @@ export default function ProgressPage() {
 
         const result: ApiResponse = await res.json();
 
+        const uploadInfo = result.upload_summary || {
+          totalCount: 0,
+          hasPowerOfAttorney: false
+        };
+
+        setUploadSummary(uploadInfo);
+
         if (!result.success) {
           setErrorMessage(result.message || "진행 정보를 불러오지 못했습니다.");
           setLoading(false);
@@ -166,25 +173,30 @@ export default function ProgressPage() {
         setAlreadySubmitted(!!result.already_submitted);
 
         if (paymentInfo.exists && paymentInfo.payment_status === "PAID") {
-          setStep("done");
+
+          if (uploadInfo.hasPowerOfAttorney) {
+            setStep("done")
+          } else {
+            setStep("upload")
+          }
+
         } else if (result.already_submitted) {
-          setStep("payment");
+
+          setStep("payment")
+
         } else {
-          setStep("form");
+
+          setStep("form")
+
         }
 
-        setForm((prev) => ({
-          ...prev,
-          applicant_name: data.channel_name || "",
-          email: data.email || "",
-          trademark_name: data.channel_name || "",
-        }));
-      } catch (error) {
-        setErrorMessage("진행 정보를 불러오는 중 오류가 발생했습니다.");
+      } catch (err) {
+        setErrorMessage("진행 정보를 불러오는 중 오류")
       } finally {
-        setLoading(false);
+        setLoading(false)
       }
-    };
+
+    }
 
     load();
   }, []);
@@ -768,6 +780,7 @@ export default function ProgressPage() {
   );
 
 }
+
 
 
 
