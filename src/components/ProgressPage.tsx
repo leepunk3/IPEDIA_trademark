@@ -192,7 +192,7 @@ export default function ProgressPage() {
 
         setForm((prev) => ({
           ...prev,
-          applicant_name: data.channel_name || "",
+          applicant_name: "",
           email: data.email || "",
           trademark_name: data.channel_name || "",
         }));
@@ -658,7 +658,7 @@ export default function ProgressPage() {
                     name="applicant_code"
                     value={form.applicant_code}
                     onChange={updateField}
-                    placeholder="출원인 코드를 입력해 주세요(모르실 경우 생략)"
+                    placeholder="출원인 코드 입력하세요(모르실 경우 생략)"
                     className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                   />
                 </div>
