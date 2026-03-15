@@ -379,7 +379,7 @@ export default function ProgressPage() {
       }));
 
       setStep("upload");
-      setSubmitMessage("결제가 완료되었습니다. 이제 위임장/자료를 업로드해 주세요.");
+      setSubmitMessage("결제가 완료되었습니다. 다음은 위임장/자료를 업로드해 주세요.");
     } catch (error) {
       setErrorMessage("결제 완료 처리 중 오류가 발생했습니다.");
     } finally {
@@ -658,7 +658,7 @@ export default function ProgressPage() {
                     name="applicant_code"
                     value={form.applicant_code}
                     onChange={updateField}
-                    placeholder="출원인 코드를 입력해 주세요"
+                    placeholder="출원인 코드를 입력해 주세요(모르실 경우 생략)"
                     className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                   />
                 </div>
@@ -699,7 +699,7 @@ export default function ProgressPage() {
                   name="goods_services"
                   value={form.goods_services}
                   onChange={updateField}
-                  placeholder="예: 의류, 모자, 온라인 교육 서비스, 유튜브 콘텐츠 제작업"
+                  placeholder="예: 의류, 모자, 교육 서비스, 콘텐츠 제작업"
                   className="min-h-[120px] w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                 />
               </div>
@@ -726,7 +726,7 @@ export default function ProgressPage() {
                 name="design_product_name"
                 value={form.design_product_name}
                 onChange={updateField}
-                placeholder="예: 캐릭터 인형, 키링, 의류"
+                placeholder="예: 인형, 키링, 의류"
                 className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
               />
             </div>
@@ -777,8 +777,8 @@ export default function ProgressPage() {
 
               <div className="rounded-xl bg-gray-50 p-4">
                 <div className="text-sm text-gray-500">입금 계좌</div>
-                <div className="mt-1 font-semibold text-gray-900">국민은행 123456-78-123456</div>
-                <div className="mt-1 text-sm text-gray-700">예금주: 아이디어블 변리사사무소</div>
+                <div className="mt-1 font-semibold text-gray-900">국민은행 693001-00-056923</div>
+                <div className="mt-1 text-sm text-gray-700">예금주: 특허법인성암</div>
               </div>
             </div>
           </section>
