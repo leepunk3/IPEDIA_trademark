@@ -133,6 +133,7 @@ export default function ProgressPage() {
     goods_services: "",
     character_name: "",
     design_product_name: "",
+    application_resident_number: "",
   });
 
   useEffect(() => {
@@ -517,7 +518,7 @@ export default function ProgressPage() {
       {step === "form" && (
         <form onSubmit={handleApplicantSubmit} className="space-y-6">
           <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-xl font-bold text-gray-900">기본 정보</h2>
+            <h2 className="mb-5 text-xl font-bold text-gray-900">출원인 정보</h2>
 
             <div className="grid gap-5">
               <div>
@@ -556,6 +557,19 @@ export default function ProgressPage() {
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                 />
               </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">주민등록번호</label>
+                <input
+                  name="applicant_resident_number"
+                  value={form.applicant_resident_number || ""}
+                  onChange={updateField}
+                  placeholder="앞 6자리만 기재"
+                  maxLength={6}
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
+                />
+              </div>
+
 
               {isRepresentativeVisible && (
                 <div>
