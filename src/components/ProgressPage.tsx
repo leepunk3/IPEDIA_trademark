@@ -23,23 +23,24 @@ type PaymentInfo = {
   paid_at?: string;
 };
 
-type UploadSummary = {
-  totalCount: number;
-  hasPowerOfAttorney: boolean;
-};
-
-type UploadItem = {
-  created_at?: string;
-  upload_type: string;
-  file_name: string;
-  file_url: string;
-  upload_status: string;
+type ApiResponse = {
+  success?: boolean;
+  message?: string;
+  data?: PageData;
+  already_submitted?: boolean;
+  payment?: PaymentInfo;
+  file_url?: string;
+  file_id?: string;
+  poa_exists?: boolean;
+  poa_preview_url?: string;
+  poa_confirmed?: boolean;
 };
 
 type FormState = {
   applicant_type: "개인" | "개인사업자" | "법인" | "";
   applicant_name: string;
   applicant_name_eng: string;
+  applicant_resident_number: string;
   representative_name: string;
   address: string;
   phone: string;
@@ -49,20 +50,10 @@ type FormState = {
   applicant_code_issue_request: boolean;
   trademark_name: string;
   goods_services: string;
+  class_codes: string;
   character_name: string;
   design_product_name: string;
-};
-
-type ApiResponse = {
-  success?: boolean;
-  message?: string;
-  data?: PageData;
-  already_submitted?: boolean;
-  payment?: PaymentInfo;
-  upload_summary?: UploadSummary;
-  uploads?: UploadItem[];
-  file_url?: string;
-  file_id?: string;
+  seal_usage_agree: boolean;
 };
 
 function getTokenFromUrl() {
@@ -85,8 +76,10 @@ function getStageLabel(stage?: string) {
       return "결제 대기";
     case "PAYMENT_COMPLETED":
       return "결제 완료";
-    case "WAITING_UPLOAD":
-      return "자료 업로드 대기";
+    case "POA_GENERATED":
+      return "위임장 생성 완료";
+    case "POA_CONFIRMED":
+      return "위임장 확인 완료";
     case "READY_FOR_FILING":
       return "출원 준비 가능";
     case "FILED":
@@ -96,32 +89,44 @@ function getStageLabel(stage?: string) {
   }
 }
 
+function formatDateInput(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 export default function ProgressPage() {
   const [token, setToken] = useState("");
   const [pageData, setPageData] = useState<PageData | null>(null);
   const [payment, setPayment] = useState<PaymentInfo | null>(null);
-  const [uploadSummary, setUploadSummary] = useState<UploadSummary | null>(null);
-  const [uploads, setUploads] = useState<UploadItem[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
-  const [uploadLoading, setUploadLoading] = useState(false);
+  const [poaLoading, setPoaLoading] = useState(false);
+  const [poaConfirmLoading, setPoaConfirmLoading] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState("");
   const [submitMessage, setSubmitMessage] = useState("");
 
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
-  const [step, setStep] = useState<"form" | "payment" | "upload" | "done">("form");
+  const [step, setStep] = useState<"form" | "payment" | "poa" | "done">("form");
 
-  const [uploadType, setUploadType] = useState("POWER_OF_ATTORNEY");
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [fileName, setFileName] = useState("");
+  const [sealFile, setSealFile] = useState<File | null>(null);
+  const [sealFileName, setSealFileName] = useState("");
+
+  const [poaDate, setPoaDate] = useState(formatDateInput(new Date()));
+  const [poaPreviewUrl, setPoaPreviewUrl] = useState("");
+  const [poaGenerated, setPoaGenerated] = useState(false);
+  const [poaConfirmed, setPoaConfirmed] = useState(false);
+  const [poaSealConfirm, setPoaSealConfirm] = useState(false);
 
   const [form, setForm] = useState<FormState>({
     applicant_type: "",
     applicant_name: "",
     applicant_name_eng: "",
+    applicant_resident_number: "",
     representative_name: "",
     address: "",
     phone: "",
@@ -131,9 +136,10 @@ export default function ProgressPage() {
     applicant_code_issue_request: false,
     trademark_name: "",
     goods_services: "",
+    class_codes: "",
     character_name: "",
     design_product_name: "",
-    application_resident_number: "",
+    seal_usage_agree: false,
   });
 
   useEffect(() => {
@@ -168,21 +174,21 @@ export default function ProgressPage() {
 
         const data = result.data || null;
         const paymentInfo = result.payment || { exists: false };
-        const uploadInfo = result.upload_summary || {
-          totalCount: 0,
-          hasPowerOfAttorney: false,
-        };
 
         setPageData(data);
         setPayment(paymentInfo);
-        setUploadSummary(uploadInfo);
         setAlreadySubmitted(!!result.already_submitted);
 
         if (paymentInfo.exists && paymentInfo.payment_status === "PAID") {
-          if (uploadInfo.hasPowerOfAttorney) {
+          if (result.poa_confirmed) {
             setStep("done");
+            setPoaGenerated(true);
+            setPoaConfirmed(true);
+            setPoaPreviewUrl(result.poa_preview_url || result.file_url || "");
           } else {
-            setStep("upload");
+            setStep("poa");
+            setPoaGenerated(!!result.poa_exists || !!result.poa_preview_url || !!result.file_url);
+            setPoaPreviewUrl(result.poa_preview_url || result.file_url || "");
           }
         } else if (result.already_submitted) {
           setStep("payment");
@@ -192,9 +198,7 @@ export default function ProgressPage() {
 
         setForm((prev) => ({
           ...prev,
-          applicant_name: "",
           email: data?.email || "",
-          trademark_name: "",
         }));
       } catch (error) {
         setErrorMessage("진행 정보를 불러오는 중 오류가 발생했습니다.");
@@ -203,18 +207,21 @@ export default function ProgressPage() {
       }
     };
 
-    load();
+    void load();
   }, []);
 
-  useEffect(() => {
-    if (step === "upload" && token) {
-      void loadUploads();
-    }
-  }, [step, token]);
-
-  const isRepresentativeVisible = useMemo(() => form.applicant_type === "법인", [form.applicant_type]);
-  const isApplicantCodeInputVisible = useMemo(() => form.applicant_code_status === "있음", [form.applicant_code_status]);
-  const isApplicantCodeRequestVisible = useMemo(() => form.applicant_code_status === "없음", [form.applicant_code_status]);
+  const isRepresentativeVisible = useMemo(
+    () => form.applicant_type === "법인",
+    [form.applicant_type]
+  );
+  const isApplicantCodeInputVisible = useMemo(
+    () => form.applicant_code_status === "있음",
+    [form.applicant_code_status]
+  );
+  const isApplicantCodeRequestVisible = useMemo(
+    () => form.applicant_code_status === "없음",
+    [form.applicant_code_status]
+  );
 
   const updateField = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -238,14 +245,22 @@ export default function ProgressPage() {
 
   const validate = () => {
     if (!form.applicant_type) return "출원인 유형을 선택해 주세요.";
-    if (!form.applicant_name.trim()) return "이름 또는 법인명을 입력해 주세요.";
+    if (!form.applicant_name.trim()) return "출원인 국문 이름 또는 법인명을 입력해 주세요.";
+    if (!form.applicant_resident_number.trim()) return "주민등록번호를 입력해 주세요.";
     if (!form.address.trim()) return "주소를 입력해 주세요.";
     if (!form.phone.trim()) return "전화번호를 입력해 주세요.";
     if (!form.email.trim()) return "이메일을 입력해 주세요.";
-    if (!form.trademark_name.trim()) return "상표명을 입력해 주세요.";
-    if (!form.goods_services.trim()) return "지정상품명을 입력해 주세요.";
+    if (!form.goods_services.trim()) return "지정서비스명을 입력해 주세요.";
+    if (!form.class_codes.trim()) return "상품류를 입력해 주세요.";
     if (form.applicant_code_status === "있음" && !form.applicant_code.trim()) {
       return "출원인 코드가 있다고 선택한 경우 출원인 코드를 입력해 주세요.";
+    }
+    if (form.applicant_code_status === "없음" && !form.applicant_code_issue_request) {
+      return "출원인 코드가 없는 경우 신규 발급 요청에 체크해 주세요.";
+    }
+    if (!sealFile) return "인감도장 이미지를 업로드해 주세요.";
+    if (!form.seal_usage_agree) {
+      return "인감도장 동일 사용 동의에 체크해 주세요.";
     }
     return "";
   };
@@ -275,9 +290,22 @@ export default function ProgressPage() {
       return;
     }
 
+    if (!sealFile) {
+      setErrorMessage("인감도장 이미지를 업로드해 주세요.");
+      return;
+    }
+
+    const maxSize = 10 * 1024 * 1024;
+    if (sealFile.size > maxSize) {
+      setErrorMessage("인감도장 이미지 파일 크기는 10MB 이하만 업로드 가능합니다.");
+      return;
+    }
+
     setSubmitting(true);
 
     try {
+      const sealBase64 = await fileToBase64(sealFile);
+
       const res = await fetch(API_URL, {
         method: "POST",
         headers: {
@@ -287,6 +315,9 @@ export default function ProgressPage() {
           action: "saveApplicantIntake",
           token,
           ...form,
+          seal_file_name: sealFile.name,
+          seal_mime_type: sealFile.type || "application/octet-stream",
+          seal_file_data: sealBase64,
         }),
       });
 
@@ -367,8 +398,10 @@ export default function ProgressPage() {
         payment_method: "bank_transfer",
       }));
 
-      setStep("upload");
-      setSubmitMessage("결제가 완료되었습니다. 이제 위임장/자료를 업로드해 주세요.");
+      setStep("poa");
+      setSubmitMessage(
+        "결제가 완료되었습니다. 위임일자를 확인한 뒤 위임장을 생성해 주세요."
+      );
     } catch (error) {
       setErrorMessage("결제 완료 처리 중 오류가 발생했습니다.");
     } finally {
@@ -376,88 +409,86 @@ export default function ProgressPage() {
     }
   };
 
-  const loadUploads = async () => {
-    try {
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "text/plain;charset=utf-8",
-        },
-        body: JSON.stringify({
-          action: "getUploadStatus",
-          token,
-        }),
-      });
-
-      const result: ApiResponse = await res.json();
-
-      if (result.success) {
-        setUploads(result.uploads || []);
-      }
-    } catch (error) {
-      console.error(error);
-    }
-  };
-
-  const handleUploadSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const generatePowerOfAttorney = async () => {
+    setPoaLoading(true);
     setErrorMessage("");
     setSubmitMessage("");
 
-    if (!selectedFile) {
-      setErrorMessage("파일을 선택해 주세요.");
-      return;
-    }
-
-    const maxSize = 10 * 1024 * 1024;
-    if (selectedFile.size > maxSize) {
-      setErrorMessage("파일 크기는 10MB 이하만 업로드 가능합니다.");
-      return;
-    }
-
-    setUploadLoading(true);
-
     try {
-      const base64 = await fileToBase64(selectedFile);
-
       const res = await fetch(API_URL, {
         method: "POST",
         headers: {
           "Content-Type": "text/plain;charset=utf-8",
         },
         body: JSON.stringify({
-          action: "uploadFile",
+          action: "generatePowerOfAttorney",
           token,
-          upload_type: uploadType,
-          file_name: selectedFile.name,
-          mime_type: selectedFile.type || "application/octet-stream",
-          file_data: base64,
+          poa_date: poaDate,
         }),
       });
 
       const result: ApiResponse = await res.json();
 
       if (!result.success) {
-        setErrorMessage(result.message || "파일 업로드에 실패했습니다.");
+        setErrorMessage(result.message || "위임장 생성에 실패했습니다.");
         return;
       }
 
-      setSubmitMessage(result.message || "파일이 정상적으로 업로드되었습니다.");
-      setSelectedFile(null);
-      setFileName("");
-
-      const input = document.getElementById("real-file-upload") as HTMLInputElement | null;
-      if (input) input.value = "";
-
-      await loadUploads();
-
-      if (uploadType === "POWER_OF_ATTORNEY") {
-        setStep("done");
-      }
+      setPoaGenerated(true);
+      setPoaPreviewUrl(result.poa_preview_url || result.file_url || "");
+      setSubmitMessage(result.message || "위임장이 생성되었습니다. 내용을 확인해 주세요.");
     } catch (error) {
-      setErrorMessage("파일 업로드 중 오류가 발생했습니다.");
+      setErrorMessage("위임장 생성 중 오류가 발생했습니다.");
     } finally {
-      setUploadLoading(false);
+      setPoaLoading(false);
+    }
+  };
+
+  const confirmPowerOfAttorney = async () => {
+    setPoaConfirmLoading(true);
+    setErrorMessage("");
+    setSubmitMessage("");
+
+    if (!poaGenerated || !poaPreviewUrl) {
+      setErrorMessage("먼저 위임장을 생성해 주세요.");
+      setPoaConfirmLoading(false);
+      return;
+    }
+
+    if (!poaSealConfirm) {
+      setErrorMessage("위임장 인감 확인에 체크해 주세요.");
+      setPoaConfirmLoading(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8",
+        },
+        body: JSON.stringify({
+          action: "confirmPowerOfAttorney",
+          token,
+          poa_date: poaDate,
+          poa_confirmed: true,
+        }),
+      });
+
+      const result: ApiResponse = await res.json();
+
+      if (!result.success) {
+        setErrorMessage(result.message || "위임장 확인 제출에 실패했습니다.");
+        return;
+      }
+
+      setPoaConfirmed(true);
+      setStep("done");
+      setSubmitMessage(result.message || "위임장 확인이 완료되었습니다.");
+    } catch (error) {
+      setErrorMessage("위임장 확인 제출 중 오류가 발생했습니다.");
+    } finally {
+      setPoaConfirmLoading(false);
     }
   };
 
@@ -537,7 +568,9 @@ export default function ProgressPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">이름 또는 법인명 *</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  출원인 국문 이름 또는 법인명 *
+                </label>
                 <input
                   name="applicant_name"
                   value={form.applicant_name}
@@ -548,7 +581,7 @@ export default function ProgressPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">영문명 *</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">영문명</label>
                 <input
                   name="applicant_name_eng"
                   value={form.applicant_name_eng}
@@ -562,13 +595,12 @@ export default function ProgressPage() {
                 <label className="mb-2 block text-sm font-medium text-gray-700">주민등록번호 *</label>
                 <input
                   name="applicant_resident_number"
-                  value={form.applicant_resident_number || ""}
+                  value={form.applicant_resident_number}
                   onChange={updateField}
                   placeholder="전체 기재"
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                 />
               </div>
-
 
               {isRepresentativeVisible && (
                 <div>
@@ -659,7 +691,7 @@ export default function ProgressPage() {
                     name="applicant_code"
                     value={form.applicant_code}
                     onChange={updateField}
-                    placeholder="출원인 코드를 입력해 주세요(모를 경우 공란)"
+                    placeholder="출원인 코드를 입력해 주세요"
                     className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                   />
                 </div>
@@ -689,7 +721,18 @@ export default function ProgressPage() {
                   name="trademark_name"
                   value={form.trademark_name}
                   onChange={updateField}
-                  placeholder="채널과 실제 출원할 상표명이 다를 경우 출원하실 상표명을 알려주세요"
+                  placeholder="채널과 실제 출원할 상표명이 다를 경우 입력해 주세요"
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">상품류 *</label>
+                <input
+                  name="class_codes"
+                  value={form.class_codes}
+                  onChange={updateField}
+                  placeholder="예: 제35류 또는 제9류, 제35류"
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                 />
               </div>
@@ -703,7 +746,7 @@ export default function ProgressPage() {
                   placeholder="예: 온라인 교육 서비스, 유튜브 콘텐츠 제작업"
                   className="min-h-[120px] w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                 />
-              </div>              
+              </div>
             </div>
           </section>
 
@@ -721,7 +764,7 @@ export default function ProgressPage() {
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                 />
               </div>
-              
+
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-700">물품명</label>
                 <input
@@ -731,7 +774,58 @@ export default function ProgressPage() {
                   placeholder="예: 캐릭터 인형, 키링, 의류"
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                 />
-              </div>              
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h2 className="mb-5 text-xl font-bold text-gray-900">인감도장 이미지</h2>
+
+            <div className="grid gap-5">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  인감도장 이미지 업로드 *
+                </label>
+                <input
+                  id="seal-file-upload"
+                  type="file"
+                  accept=".png,.jpg,.jpeg"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setSealFile(file);
+                    setSealFileName(file ? file.name : "");
+                  }}
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
+                />
+                <p className="mt-2 text-sm text-gray-500">
+                  출원인코드 등록 및 위임장 작성에 동일하게 사용할 인감도장 이미지를 업로드해
+                  주세요. PNG 파일을 권장합니다.
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">선택된 파일명</label>
+                <input
+                  value={sealFileName}
+                  readOnly
+                  placeholder="선택된 인감도장 이미지 파일명이 표시됩니다"
+                  className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 outline-none"
+                />
+              </div>
+
+              <label className="flex items-start gap-3 rounded-xl bg-gray-50 px-4 py-4 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  name="seal_usage_agree"
+                  checked={form.seal_usage_agree}
+                  onChange={updateField}
+                  className="mt-1"
+                />
+                <span>
+                  업로드한 인감도장을 출원인코드 및 위임장 작성에 동일하게 사용하는 것에
+                  동의합니다.
+                </span>
+              </label>
             </div>
           </section>
 
@@ -809,92 +903,92 @@ export default function ProgressPage() {
         </div>
       )}
 
-      {step === "upload" && (
+      {step === "poa" && (
         <div className="space-y-6">
           <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-3 text-2xl font-bold text-gray-900">위임장 / 자료 업로드</h2>
+            <h2 className="mb-3 text-2xl font-bold text-gray-900">위임장 확인</h2>
             <p className="mb-6 text-gray-600">
-              결제가 완료되었습니다. 출원 진행을 위해 자료를 업로드해 주세요(위임장은 필수 업로드).
+              결제가 완료되었습니다. 위임일자를 확인한 뒤 위임장을 생성하고 내용을 확인해
+              주세요.
             </p>
 
-            <form onSubmit={handleUploadSubmit} className="space-y-5">
+            <div className="grid gap-5">
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">자료 종류</label>
-                <select
-                  value={uploadType}
-                  onChange={(e) => setUploadType(e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
-                >
-                  <option value="POWER_OF_ATTORNEY">위임장(필수)</option>
-                  <option value="BUSINESS_CERTIFICATE">사업자등록증</option>
-                  <option value="LOGO_FILE">브랜드 파일</option>
-                  <option value="CHARACTER_IMAGE">캐릭터 파일(선택)</option>
-                  <option value="OTHER">기타</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">파일 선택</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">위임일자 *</label>
                 <input
-                  id="real-file-upload"
-                  type="file"
-                  accept=".pdf,.png,.jpg,.jpeg"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    setSelectedFile(file);
-                    setFileName(file ? file.name : "");
-                  }}
+                  type="date"
+                  value={poaDate}
+                  onChange={(e) => setPoaDate(e.target.value)}
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                 />
                 <p className="mt-2 text-sm text-gray-500">
-                  PDF, PNG, JPG, JPEG 파일 업로드 가능 / 10MB 이하 권장
+                  위임장에 기재될 날짜입니다. 기본값은 오늘 날짜입니다.
                 </p>
               </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">선택된 파일명</label>
-                <input
-                  value={fileName}
-                  readOnly
-                  placeholder="선택된 파일이 표시됩니다"
-                  className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 outline-none"
-                />
+              <div className="rounded-xl bg-gray-50 p-4 text-sm text-gray-700">
+                복사된 위임장에는 상품류, 출원인 국문 이름, 주민등록번호, 출원인코드(특허고객번호),
+                동일 인감도장 이미지, 위임일자가 반영됩니다.
               </div>
 
               <button
-                type="submit"
-                disabled={uploadLoading}
+                type="button"
+                onClick={generatePowerOfAttorney}
+                disabled={poaLoading}
                 className="w-full rounded-2xl bg-black px-6 py-4 text-base font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {uploadLoading ? "저장 중..." : "파일 업로드하기"}
+                {poaLoading ? "위임장 생성 중..." : poaGenerated ? "위임장 다시 생성하기" : "위임장 생성하기"}
               </button>
-            </form>
+            </div>
           </section>
 
-          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h3 className="mb-4 text-xl font-bold text-gray-900">업로드된 자료</h3>
+          {poaPreviewUrl && (
+            <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+              <h3 className="mb-4 text-xl font-bold text-gray-900">위임장 미리보기</h3>
 
-            {uploads.length === 0 ? (
-              <p className="text-sm text-gray-600">아직 등록된 자료가 없습니다.</p>
-            ) : (
-              <div className="space-y-3">
-                {uploads.map((item, idx) => (
-                  <div key={idx} className="rounded-xl bg-gray-50 p-4">
-                    <div className="text-sm text-gray-500">{item.upload_type}</div>
-                    <div className="mt-1 font-semibold text-gray-900">{item.file_name}</div>
-                    <a
-                      href={item.file_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="mt-1 block break-all text-sm text-blue-600 underline"
-                    >
-                      {item.file_url}
-                    </a>
-                  </div>
-                ))}
+              <div className="mb-4 overflow-hidden rounded-xl border border-gray-200">
+                <iframe
+                  src={poaPreviewUrl}
+                  title="위임장 미리보기"
+                  className="h-[720px] w-full"
+                />
               </div>
-            )}
-          </section>
+
+              <a
+                href={poaPreviewUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm font-medium text-blue-600 underline"
+              >
+                새 창에서 위임장 보기
+              </a>
+
+              <div className="mt-5">
+                <label className="flex items-start gap-3 rounded-xl bg-gray-50 px-4 py-4 text-sm text-gray-700">
+                  <input
+                    type="checkbox"
+                    checked={poaSealConfirm}
+                    onChange={(e) => setPoaSealConfirm(e.target.checked)}
+                    className="mt-1"
+                  />
+                  <span>
+                    본 위임장에 표시된 인감은 본인이 제출한 인감 이미지와 동일함을 확인합니다.
+                  </span>
+                </label>
+              </div>
+
+              <div className="mt-5">
+                <button
+                  type="button"
+                  onClick={confirmPowerOfAttorney}
+                  disabled={poaConfirmLoading || !poaGenerated}
+                  className="w-full rounded-2xl bg-black px-6 py-4 text-base font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {poaConfirmLoading ? "제출 중..." : "위임장 확인 및 제출"}
+                </button>
+              </div>
+            </section>
+          )}
 
           {errorMessage && (
             <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -912,16 +1006,24 @@ export default function ProgressPage() {
 
       {step === "done" && (
         <div className="rounded-2xl border border-green-200 bg-green-50 p-8 shadow-sm">
-          <h2 className="mb-3 text-2xl font-bold text-green-800">출원 준비 자료가 접수되었습니다</h2>
+          <h2 className="mb-3 text-2xl font-bold text-green-800">위임장 확인이 완료되었습니다</h2>
           <p className="text-green-800">
-            위임장 및 자료가 정상적으로 등록되었습니다. 확인 후 출원 준비 단계로 진행됩니다.
+            결제와 위임장 확인이 정상적으로 완료되었습니다. 확인 후 출원 준비 단계로
+            진행됩니다.
           </p>
+
+          {poaPreviewUrl && (
+            <a
+              href={poaPreviewUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-4 inline-block text-sm font-medium text-green-900 underline"
+            >
+              제출한 위임장 다시 보기
+            </a>
+          )}
         </div>
       )}
     </div>
   );
 }
-
-
-
-
