@@ -2,7 +2,8 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 
-const API_URL = "https://script.google.com/macros/s/AKfycbys_NnSDz8R6B4ceYdbScr2utmQ5KZBmXuyqmax7xAybOfcHfbqyRw8yCwbCX3JxW5a/exec";
+const API_URL =
+  "https://script.google.com/macros/s/AKfycbys_NnSDz8R6B4ceYdbScr2utmQ5KZBmXuyqmax7xAybOfcHfbqyRw8yCwbCX3JxW5a/exec";
 
 type PageData = {
   lead_id: string;
@@ -55,7 +56,7 @@ type FormState = {
 type ApiResponse = {
   success?: boolean;
   message?: string;
-  data?: any;
+  data?: PageData;
   already_submitted?: boolean;
   payment?: PaymentInfo;
   upload_summary?: UploadSummary;
@@ -100,7 +101,6 @@ export default function ProgressPage() {
   const [pageData, setPageData] = useState<PageData | null>(null);
   const [payment, setPayment] = useState<PaymentInfo | null>(null);
   const [uploadSummary, setUploadSummary] = useState<UploadSummary | null>(null);
-
   const [uploads, setUploads] = useState<UploadItem[]>([]);
 
   const [loading, setLoading] = useState(true);
@@ -162,11 +162,10 @@ export default function ProgressPage() {
 
         if (!result.success) {
           setErrorMessage(result.message || "진행 정보를 불러오지 못했습니다.");
-          setLoading(false);
           return;
         }
 
-        const data = result.data || {};
+        const data = result.data || null;
         const paymentInfo = result.payment || { exists: false };
         const uploadInfo = result.upload_summary || {
           totalCount: 0,
@@ -193,7 +192,7 @@ export default function ProgressPage() {
         setForm((prev) => ({
           ...prev,
           applicant_name: "",
-          email: data.email || "",
+          email: data?.email || "",
           trademark_name: "",
         }));
       } catch (error) {
@@ -208,21 +207,13 @@ export default function ProgressPage() {
 
   useEffect(() => {
     if (step === "upload" && token) {
-      loadUploads();
+      void loadUploads();
     }
   }, [step, token]);
 
-  const isRepresentativeVisible = useMemo(() => {
-    return form.applicant_type === "법인";
-  }, [form.applicant_type]);
-
-  const isApplicantCodeInputVisible = useMemo(() => {
-    return form.applicant_code_status === "있음";
-  }, [form.applicant_code_status]);
-
-  const isApplicantCodeRequestVisible = useMemo(() => {
-    return form.applicant_code_status === "없음";
-  }, [form.applicant_code_status]);
+  const isRepresentativeVisible = useMemo(() => form.applicant_type === "법인", [form.applicant_type]);
+  const isApplicantCodeInputVisible = useMemo(() => form.applicant_code_status === "있음", [form.applicant_code_status]);
+  const isApplicantCodeRequestVisible = useMemo(() => form.applicant_code_status === "없음", [form.applicant_code_status]);
 
   const updateField = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -258,8 +249,8 @@ export default function ProgressPage() {
     return "";
   };
 
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
+  const fileToBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
       const reader = new FileReader();
 
       reader.onload = () => {
@@ -271,7 +262,6 @@ export default function ProgressPage() {
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
-  };
 
   const handleApplicantSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -303,7 +293,6 @@ export default function ProgressPage() {
 
       if (!result.success) {
         setErrorMessage(result.message || "제출에 실패했습니다.");
-        setSubmitting(false);
         return;
       }
 
@@ -311,7 +300,6 @@ export default function ProgressPage() {
       setAlreadySubmitted(true);
 
       await createPayment();
-
       setStep("payment");
     } catch (error) {
       setErrorMessage("제출 중 오류가 발생했습니다.");
@@ -379,7 +367,7 @@ export default function ProgressPage() {
       }));
 
       setStep("upload");
-      setSubmitMessage("결제가 완료되었습니다. 다음은 위임장/자료를 업로드해 주세요.");
+      setSubmitMessage("결제가 완료되었습니다. 이제 위임장/자료를 업로드해 주세요.");
     } catch (error) {
       setErrorMessage("결제 완료 처리 중 오류가 발생했습니다.");
     } finally {
@@ -498,7 +486,7 @@ export default function ProgressPage() {
       <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <h1 className="mb-2 text-3xl font-bold text-gray-900">고객 전용 진행 페이지</h1>
         <p className="mb-5 text-gray-600">
-          출원 진행을 위해 필요한 정보를 입력해 주세요.
+          출원 진행을 위해 필요한 정보를 입력하고 결제를 진행해 주세요.
         </p>
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -553,7 +541,7 @@ export default function ProgressPage() {
                   name="applicant_name"
                   value={form.applicant_name}
                   onChange={updateField}
-                  placeholder="홍길동 또는 ABC 주식회사"
+                  placeholder="예: 홍길동 또는 ABC 주식회사"
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                 />
               </div>
@@ -658,7 +646,7 @@ export default function ProgressPage() {
                     name="applicant_code"
                     value={form.applicant_code}
                     onChange={updateField}
-                    placeholder="출원인 코드 입력하세요(모르실 경우 생략)"
+                    placeholder="출원인 코드를 입력해 주세요"
                     className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                   />
                 </div>
@@ -683,29 +671,37 @@ export default function ProgressPage() {
 
             <div className="grid gap-5">
               <div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">상표명(채널명과 실제 출원할 상표명이 다를 경우) *</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">상표명 *</label>
                 <input
                   name="trademark_name"
-                  value={form.trademark_name || ""}
+                  value={form.trademark_name}
                   onChange={updateField}
-                  placeholder="실제 출원하고 싶은 상표명을 입력해 주세요(없으면 공란)"
+                  placeholder="예: 아이디어블TV"
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                 />
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">지정상품명(상표를 사용하실 비즈니스를 써주세요) *</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">지정상품명 *</label>
                 <textarea
                   name="goods_services"
                   value={form.goods_services}
                   onChange={updateField}
-                  placeholder="예: 방송업, 의류 판매업, 교육 서비스업 등"
+                  placeholder="예: 의류, 모자, 온라인 교육 서비스, 유튜브 콘텐츠 제작업"
                   className="min-h-[120px] w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                 />
               </div>
 
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">캐릭터명</label>
+                <input
+                  name="character_name"
+                  value={form.character_name}
+                  onChange={updateField}
+                  placeholder="캐릭터가 있을 경우 입력해 주세요"
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
+                />
+              </div>
             </div>
           </section>
 
@@ -713,23 +709,12 @@ export default function ProgressPage() {
             <h2 className="mb-5 text-xl font-bold text-gray-900">디자인 정보</h2>
 
             <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">캐릭터명(선택)</label>
-                <input
-                  name="character_name"
-                  value={form.character_name}
-                  onChange={updateField}
-                  placeholder="캐릭터 이름을 입력해 주세요"
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
-                />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">물품명(캐릭터를 사용하실 비즈니스를 써주세요)</label>
+              <label className="mb-2 block text-sm font-medium text-gray-700">물품명</label>
               <input
                 name="design_product_name"
                 value={form.design_product_name}
                 onChange={updateField}
-                placeholder="예: 인형, 키링, 의류"
+                placeholder="예: 캐릭터 인형, 키링, 의류"
                 className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
               />
             </div>
@@ -780,8 +765,8 @@ export default function ProgressPage() {
 
               <div className="rounded-xl bg-gray-50 p-4">
                 <div className="text-sm text-gray-500">입금 계좌</div>
-                <div className="mt-1 font-semibold text-gray-900">국민은행 693001-00-056923</div>
-                <div className="mt-1 text-sm text-gray-700">예금주: 특허법인성암</div>
+                <div className="mt-1 font-semibold text-gray-900">국민은행 123456-78-123456</div>
+                <div className="mt-1 text-sm text-gray-700">예금주: 아이디어블 변리사사무소</div>
               </div>
             </div>
           </section>
