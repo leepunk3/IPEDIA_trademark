@@ -194,7 +194,7 @@ export default function ProgressPage() {
           ...prev,
           applicant_name: "",
           email: data.email || "",
-          trademark_name: data.channel_name || "",
+          trademark_name: "",
         }));
       } catch (error) {
         setErrorMessage("진행 정보를 불러오는 중 오류가 발생했습니다.");
@@ -685,23 +685,12 @@ export default function ProgressPage() {
               <div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">채널명 *</label>
-                <input
-                  name="trademark_name"
-                  value={form.trademark_name}
-                  onChange={updateField}
-                  placeholder="채널명입니다"
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
-                />
-              </div>
-
-                <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">상표명(채널명이 아닌 다른 상표로 진행할 경우) *</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">상표명(채널명과 실제 출원할 상표명이 다를 경우) *</label>
                 <input
                   name="trademark_name"
                   value={form.trademark_name || ""}
                   onChange={updateField}
-                  placeholder="등록하고 싶은 상표명이 있다면 입력해 주세요(없으면 공란)"
+                  placeholder="실제 출원하고 싶은 상표명을 입력해 주세요(없으면 공란)"
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                 />
               </div>
