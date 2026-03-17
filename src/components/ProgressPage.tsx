@@ -23,17 +23,42 @@ type PaymentInfo = {
   paid_at?: string;
 };
 
+type ApplicantInfo = {
+  applicant_type?: "개인" | "개인사업자" | "법인" | "";
+  applicant_name?: string;
+  applicant_name_eng?: string;
+  applicant_resident_number?: string;
+  representative_name?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  applicant_code_status?: "있음" | "없음";
+  applicant_code?: string;
+  applicant_code_issue_request?: boolean;
+  trademark_name?: string;
+  goods_services?: string;
+  class_codes?: string;
+  character_name?: string;
+  design_product_name?: string;
+  seal_usage_agree?: boolean;
+  seal_file_name?: string;
+  seal_file_url?: string;
+  poa_date_input?: string;
+};
+
 type ApiResponse = {
   success?: boolean;
   message?: string;
   data?: PageData;
   already_submitted?: boolean;
   payment?: PaymentInfo;
+  applicant?: ApplicantInfo;
   file_url?: string;
   file_id?: string;
   poa_exists?: boolean;
   poa_preview_url?: string;
   poa_confirmed?: boolean;
+  missing_fields?: string[];
 };
 
 type FormState = {
@@ -96,6 +121,26 @@ function formatDateInput(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+function formatPaidAt(value?: string) {
+  if (!value) return "-";
+  return value;
+}
+
+function FieldRow({
+  label,
+  value,
+}: {
+  label: string;
+  value?: string | number | boolean | null;
+}) {
+  return (
+    <div className="rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-700">
+      <span className="font-medium text-gray-900">{label}: </span>
+      <span>{value === undefined || value === null || value === "" ? "-" : String(value)}</span>
+    </div>
+  );
+}
+
 export default function ProgressPage() {
   const [token, setToken] = useState("");
   const [pageData, setPageData] = useState<PageData | null>(null);
@@ -111,10 +156,14 @@ export default function ProgressPage() {
   const [submitMessage, setSubmitMessage] = useState("");
 
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
-  const [step, setStep] = useState<"form" | "payment" | "poa" | "done">("form");
+
+  const [editingApplicant, setEditingApplicant] = useState(false);
+  const [editingTrademark, setEditingTrademark] = useState(false);
+  const [editingSeal, setEditingSeal] = useState(false);
 
   const [sealFile, setSealFile] = useState<File | null>(null);
   const [sealFileName, setSealFileName] = useState("");
+  const [sealFileUrl, setSealFileUrl] = useState("");
 
   const [poaDate, setPoaDate] = useState(formatDateInput(new Date()));
   const [poaPreviewUrl, setPoaPreviewUrl] = useState("");
@@ -174,32 +223,45 @@ export default function ProgressPage() {
 
         const data = result.data || null;
         const paymentInfo = result.payment || { exists: false };
+        const applicant = result.applicant || {};
 
         setPageData(data);
         setPayment(paymentInfo);
         setAlreadySubmitted(!!result.already_submitted);
 
-        if (paymentInfo.exists && paymentInfo.payment_status === "PAID") {
-          if (result.poa_confirmed) {
-            setStep("done");
-            setPoaGenerated(true);
-            setPoaConfirmed(true);
-            setPoaPreviewUrl(result.poa_preview_url || result.file_url || "");
-          } else {
-            setStep("poa");
-            setPoaGenerated(!!result.poa_exists || !!result.poa_preview_url || !!result.file_url);
-            setPoaPreviewUrl(result.poa_preview_url || result.file_url || "");
-          }
-        } else if (result.already_submitted) {
-          setStep("payment");
-        } else {
-          setStep("form");
-        }
+        setForm({
+          applicant_type: (applicant.applicant_type as FormState["applicant_type"]) || "",
+          applicant_name: applicant.applicant_name || "",
+          applicant_name_eng: applicant.applicant_name_eng || "",
+          applicant_resident_number: applicant.applicant_resident_number || "",
+          representative_name: applicant.representative_name || "",
+          address: applicant.address || "",
+          phone: applicant.phone || "",
+          email: applicant.email || data?.email || "",
+          applicant_code_status:
+            (applicant.applicant_code_status as FormState["applicant_code_status"]) || "없음",
+          applicant_code: applicant.applicant_code || "",
+          applicant_code_issue_request: !!applicant.applicant_code_issue_request,
+          trademark_name: applicant.trademark_name || "",
+          goods_services: applicant.goods_services || "",
+          class_codes: applicant.class_codes || "",
+          character_name: applicant.character_name || "",
+          design_product_name: applicant.design_product_name || "",
+          seal_usage_agree: !!applicant.seal_usage_agree,
+        });
 
-        setForm((prev) => ({
-          ...prev,
-          email: data?.email || "",
-        }));
+        setSealFileName(applicant.seal_file_name || "");
+        setSealFileUrl(applicant.seal_file_url || "");
+        setPoaDate(applicant.poa_date_input || formatDateInput(new Date()));
+        setPoaGenerated(!!result.poa_exists || !!result.poa_preview_url || !!result.file_url);
+        setPoaConfirmed(!!result.poa_confirmed);
+        setPoaPreviewUrl(result.poa_preview_url || result.file_url || "");
+
+        if (result.already_submitted) {
+          setEditingApplicant(false);
+          setEditingTrademark(false);
+          setEditingSeal(false);
+        }
       } catch (error) {
         setErrorMessage("진행 정보를 불러오는 중 오류가 발생했습니다.");
       } finally {
@@ -222,6 +284,10 @@ export default function ProgressPage() {
     () => form.applicant_code_status === "없음",
     [form.applicant_code_status]
   );
+
+  const canShowApplicantEdit = !alreadySubmitted || editingApplicant;
+  const canShowTrademarkEdit = !alreadySubmitted || editingTrademark;
+  const canShowSealEdit = !alreadySubmitted || editingSeal;
 
   const updateField = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -258,7 +324,7 @@ export default function ProgressPage() {
     if (form.applicant_code_status === "없음" && !form.applicant_code_issue_request) {
       return "출원인 코드가 없는 경우 신규 발급 요청에 체크해 주세요.";
     }
-    if (!sealFile) return "인감도장 이미지를 업로드해 주세요.";
+    if (!sealFile && !sealFileName) return "인감도장 이미지를 업로드해 주세요.";
     if (!form.seal_usage_agree) {
       return "인감도장 동일 사용 동의에 체크해 주세요.";
     }
@@ -278,67 +344,6 @@ export default function ProgressPage() {
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
-
-  const handleApplicantSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage("");
-    setSubmitMessage("");
-
-    const validationMessage = validate();
-    if (validationMessage) {
-      setErrorMessage(validationMessage);
-      return;
-    }
-
-    if (!sealFile) {
-      setErrorMessage("인감도장 이미지를 업로드해 주세요.");
-      return;
-    }
-
-    const maxSize = 10 * 1024 * 1024;
-    if (sealFile.size > maxSize) {
-      setErrorMessage("인감도장 이미지 파일 크기는 10MB 이하만 업로드 가능합니다.");
-      return;
-    }
-
-    setSubmitting(true);
-
-    try {
-      const sealBase64 = await fileToBase64(sealFile);
-
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "text/plain;charset=utf-8",
-        },
-        body: JSON.stringify({
-          action: "saveApplicantIntake",
-          token,
-          ...form,
-          seal_file_name: sealFile.name,
-          seal_mime_type: sealFile.type || "application/octet-stream",
-          seal_file_data: sealBase64,
-        }),
-      });
-
-      const result: ApiResponse = await res.json();
-
-      if (!result.success) {
-        setErrorMessage(result.message || "제출에 실패했습니다.");
-        return;
-      }
-
-      setSubmitMessage(result.message || "입력이 정상적으로 접수되었습니다.");
-      setAlreadySubmitted(true);
-
-      await createPayment();
-      setStep("payment");
-    } catch (error) {
-      setErrorMessage("제출 중 오류가 발생했습니다.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   const createPayment = async () => {
     const res = await fetch(API_URL, {
@@ -363,6 +368,81 @@ export default function ProgressPage() {
         payment_amount: "330000",
         payment_status: "PENDING",
       });
+    }
+  };
+
+  const handleApplicantSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage("");
+    setSubmitMessage("");
+
+    const validationMessage = validate();
+    if (validationMessage) {
+      setErrorMessage(validationMessage);
+      return;
+    }
+
+    if (!sealFile && !sealFileName) {
+      setErrorMessage("인감도장 이미지를 업로드해 주세요.");
+      return;
+    }
+
+    if (sealFile) {
+      const maxSize = 10 * 1024 * 1024;
+      if (sealFile.size > maxSize) {
+        setErrorMessage("인감도장 이미지 파일 크기는 10MB 이하만 업로드 가능합니다.");
+        return;
+      }
+    }
+
+    setSubmitting(true);
+
+    try {
+      const sealBase64 = sealFile ? await fileToBase64(sealFile) : "";
+
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8",
+        },
+        body: JSON.stringify({
+          action: alreadySubmitted ? "updateApplicantIntake" : "saveApplicantIntake",
+          token,
+          ...form,
+          seal_file_name: sealFile ? sealFile.name : sealFileName,
+          seal_mime_type: sealFile ? sealFile.type || "application/octet-stream" : "",
+          seal_file_data: sealBase64,
+        }),
+      });
+
+      const result: ApiResponse = await res.json();
+
+      if (!result.success) {
+        setErrorMessage(result.message || "저장에 실패했습니다.");
+        return;
+      }
+
+      setSubmitMessage(
+        result.message || (alreadySubmitted ? "수정 내용이 저장되었습니다." : "입력이 정상적으로 접수되었습니다.")
+      );
+      setAlreadySubmitted(true);
+      setEditingApplicant(false);
+      setEditingTrademark(false);
+      setEditingSeal(false);
+
+      if (sealFile) {
+        setSealFileName(sealFile.name);
+        setSealFileUrl("");
+        setSealFile(null);
+      }
+
+      if (!alreadySubmitted) {
+        await createPayment();
+      }
+    } catch (error) {
+      setErrorMessage("저장 중 오류가 발생했습니다.");
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -398,10 +478,7 @@ export default function ProgressPage() {
         payment_method: "bank_transfer",
       }));
 
-      setStep("poa");
-      setSubmitMessage(
-        "결제가 완료되었습니다. 위임일자를 확인한 뒤 위임장을 생성해 주세요."
-      );
+      setSubmitMessage("결제가 완료되었습니다. 위임일자를 확인한 뒤 위임장을 생성해 주세요.");
     } catch (error) {
       setErrorMessage("결제 완료 처리 중 오류가 발생했습니다.");
     } finally {
@@ -431,10 +508,28 @@ export default function ProgressPage() {
 
       if (!result.success) {
         setErrorMessage(result.message || "위임장 생성에 실패했습니다.");
+
+        if (result.missing_fields?.includes("applicant_resident_number")) {
+          setEditingApplicant(true);
+        }
+
+        if (
+          result.missing_fields?.includes("class_codes") ||
+          result.missing_fields?.includes("goods_services") ||
+          result.missing_fields?.includes("applicant_code")
+        ) {
+          setEditingTrademark(true);
+        }
+
+        if (result.missing_fields?.includes("seal_file_id")) {
+          setEditingSeal(true);
+        }
+
         return;
       }
 
       setPoaGenerated(true);
+      setPoaConfirmed(false);
       setPoaPreviewUrl(result.poa_preview_url || result.file_url || "");
       setSubmitMessage(result.message || "위임장이 생성되었습니다. 내용을 확인해 주세요.");
     } catch (error) {
@@ -483,7 +578,6 @@ export default function ProgressPage() {
       }
 
       setPoaConfirmed(true);
-      setStep("done");
       setSubmitMessage(result.message || "위임장 확인이 완료되었습니다.");
     } catch (error) {
       setErrorMessage("위임장 확인 제출 중 오류가 발생했습니다.");
@@ -518,7 +612,7 @@ export default function ProgressPage() {
       <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <h1 className="mb-2 text-3xl font-bold text-gray-900">고객 전용 진행 페이지</h1>
         <p className="mb-5 text-gray-600">
-          출원 진행을 위해 필요한 정보를 입력하고 결제를 진행해 주세요.
+          각 단계의 입력 정보와 진행 상태를 아래에서 확인하고, 필요한 경우 수정해 주세요.
         </p>
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -546,11 +640,22 @@ export default function ProgressPage() {
         </div>
       </div>
 
-      {step === "form" && (
-        <form onSubmit={handleApplicantSubmit} className="space-y-6">
-          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-xl font-bold text-gray-900">출원인 정보</h2>
+      <form onSubmit={handleApplicantSubmit} className="space-y-6">
+        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-gray-900">출원인 정보</h2>
+            {alreadySubmitted && (
+              <button
+                type="button"
+                onClick={() => setEditingApplicant((prev) => !prev)}
+                className="text-sm font-medium text-blue-600 underline"
+              >
+                {editingApplicant ? "접기" : "수정하기"}
+              </button>
+            )}
+          </div>
 
+          {canShowApplicantEdit ? (
             <div className="grid gap-5">
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-700">출원인 유형 *</label>
@@ -651,136 +756,186 @@ export default function ProgressPage() {
                 </div>
               </div>
             </div>
-          </section>
+          ) : (
+            <div className="grid gap-3">
+              <FieldRow label="출원인 유형" value={form.applicant_type} />
+              <FieldRow label="이름 또는 법인명" value={form.applicant_name} />
+              <FieldRow label="영문명" value={form.applicant_name_eng} />
+              <FieldRow label="주민등록번호" value={form.applicant_resident_number} />
+              {form.applicant_type === "법인" && (
+                <FieldRow label="대표자명" value={form.representative_name} />
+              )}
+              <FieldRow label="주소" value={form.address} />
+              <FieldRow label="전화번호" value={form.phone} />
+              <FieldRow label="이메일" value={form.email} />
+            </div>
+          )}
+        </section>
 
-          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-xl font-bold text-gray-900">출원인 코드</h2>
+        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-gray-900">출원인 코드 / 상표 정보</h2>
+            {alreadySubmitted && (
+              <button
+                type="button"
+                onClick={() => setEditingTrademark((prev) => !prev)}
+                className="text-sm font-medium text-blue-600 underline"
+              >
+                {editingTrademark ? "접기" : "수정하기"}
+              </button>
+            )}
+          </div>
 
-            <div className="grid gap-5">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">출원인 코드 여부</label>
-                <div className="flex flex-wrap gap-4">
-                  <label className="flex items-center gap-2 text-sm text-gray-700">
-                    <input
-                      type="radio"
-                      name="applicant_code_status"
-                      value="있음"
-                      checked={form.applicant_code_status === "있음"}
-                      onChange={updateField}
-                    />
-                    있음
-                  </label>
+          {canShowTrademarkEdit ? (
+            <div className="grid gap-6">
+              <div className="grid gap-5">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">출원인 코드 여부</label>
+                  <div className="flex flex-wrap gap-4">
+                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                      <input
+                        type="radio"
+                        name="applicant_code_status"
+                        value="있음"
+                        checked={form.applicant_code_status === "있음"}
+                        onChange={updateField}
+                      />
+                      있음
+                    </label>
 
-                  <label className="flex items-center gap-2 text-sm text-gray-700">
-                    <input
-                      type="radio"
-                      name="applicant_code_status"
-                      value="없음"
-                      checked={form.applicant_code_status === "없음"}
-                      onChange={updateField}
-                    />
-                    없음
-                  </label>
+                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                      <input
+                        type="radio"
+                        name="applicant_code_status"
+                        value="없음"
+                        checked={form.applicant_code_status === "없음"}
+                        onChange={updateField}
+                      />
+                      없음
+                    </label>
+                  </div>
                 </div>
+
+                {isApplicantCodeInputVisible && (
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-gray-700">출원인 코드</label>
+                    <input
+                      name="applicant_code"
+                      value={form.applicant_code}
+                      onChange={updateField}
+                      placeholder="출원인 코드를 입력해 주세요"
+                      className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
+                    />
+                  </div>
+                )}
+
+                {isApplicantCodeRequestVisible && (
+                  <label className="flex items-center gap-2 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                    <input
+                      type="checkbox"
+                      name="applicant_code_issue_request"
+                      checked={form.applicant_code_issue_request}
+                      onChange={updateField}
+                    />
+                    출원인 코드 신규 발급 요청
+                  </label>
+                )}
               </div>
 
-              {isApplicantCodeInputVisible && (
+              <div className="grid gap-5">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700">출원인 코드</label>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">상표명(선택)</label>
                   <input
-                    name="applicant_code"
-                    value={form.applicant_code}
+                    name="trademark_name"
+                    value={form.trademark_name}
                     onChange={updateField}
-                    placeholder="출원인 코드를 입력해 주세요"
+                    placeholder="채널과 실제 출원할 상표명이 다를 경우 입력해 주세요"
                     className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                   />
                 </div>
-              )}
 
-              {isApplicantCodeRequestVisible && (
-                <label className="flex items-center gap-2 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">상품류 *</label>
                   <input
-                    type="checkbox"
-                    name="applicant_code_issue_request"
-                    checked={form.applicant_code_issue_request}
+                    name="class_codes"
+                    value={form.class_codes}
                     onChange={updateField}
+                    placeholder="예: 제35류 또는 제9류, 제35류"
+                    className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                   />
-                  출원인 코드 신규 발급 요청
-                </label>
-              )}
-            </div>
-          </section>
+                </div>
 
-          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-xl font-bold text-gray-900">상표 정보</h2>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">지정서비스명 *</label>
+                  <textarea
+                    name="goods_services"
+                    value={form.goods_services}
+                    onChange={updateField}
+                    placeholder="예: 온라인 교육 서비스, 유튜브 콘텐츠 제작업"
+                    className="min-h-[120px] w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
+                  />
+                </div>
 
-            <div className="grid gap-5">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">상표명(선택)</label>
-                <input
-                  name="trademark_name"
-                  value={form.trademark_name}
-                  onChange={updateField}
-                  placeholder="채널과 실제 출원할 상표명이 다를 경우 입력해 주세요"
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
-                />
-              </div>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">캐릭터명</label>
+                  <input
+                    name="character_name"
+                    value={form.character_name}
+                    onChange={updateField}
+                    placeholder="캐릭터가 있을 경우 입력해 주세요"
+                    className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
+                  />
+                </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">상품류 *</label>
-                <input
-                  name="class_codes"
-                  value={form.class_codes}
-                  onChange={updateField}
-                  placeholder="예: 제35류 또는 제9류, 제35류"
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">지정서비스명 *</label>
-                <textarea
-                  name="goods_services"
-                  value={form.goods_services}
-                  onChange={updateField}
-                  placeholder="예: 온라인 교육 서비스, 유튜브 콘텐츠 제작업"
-                  className="min-h-[120px] w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
-                />
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">물품명</label>
+                  <input
+                    name="design_product_name"
+                    value={form.design_product_name}
+                    onChange={updateField}
+                    placeholder="예: 캐릭터 인형, 키링, 의류"
+                    className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
+                  />
+                </div>
               </div>
             </div>
-          </section>
-
-          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-xl font-bold text-gray-900">디자인 정보</h2>
-
-            <div className="grid gap-5">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">캐릭터명</label>
-                <input
-                  name="character_name"
-                  value={form.character_name}
-                  onChange={updateField}
-                  placeholder="캐릭터가 있을 경우 입력해 주세요"
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">물품명</label>
-                <input
-                  name="design_product_name"
-                  value={form.design_product_name}
-                  onChange={updateField}
-                  placeholder="예: 캐릭터 인형, 키링, 의류"
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
-                />
-              </div>
+          ) : (
+            <div className="grid gap-3">
+              <FieldRow label="출원인 코드 여부" value={form.applicant_code_status} />
+              <FieldRow
+                label="출원인 코드"
+                value={
+                  form.applicant_code_status === "있음"
+                    ? form.applicant_code
+                    : form.applicant_code_issue_request
+                    ? "신규 발급 요청"
+                    : "-"
+                }
+              />
+              <FieldRow label="상표명" value={form.trademark_name} />
+              <FieldRow label="상품류" value={form.class_codes} />
+              <FieldRow label="지정서비스명" value={form.goods_services} />
+              <FieldRow label="캐릭터명" value={form.character_name} />
+              <FieldRow label="물품명" value={form.design_product_name} />
             </div>
-          </section>
+          )}
+        </section>
 
-          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-xl font-bold text-gray-900">인감도장 이미지</h2>
+        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="mb-5 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-gray-900">인감도장 이미지</h2>
+            {alreadySubmitted && (
+              <button
+                type="button"
+                onClick={() => setEditingSeal((prev) => !prev)}
+                className="text-sm font-medium text-blue-600 underline"
+              >
+                {editingSeal ? "접기" : "수정하기"}
+              </button>
+            )}
+          </div>
 
+          {canShowSealEdit ? (
             <div className="grid gap-5">
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-700">
@@ -793,20 +948,20 @@ export default function ProgressPage() {
                   onChange={(e) => {
                     const file = e.target.files?.[0] || null;
                     setSealFile(file);
-                    setSealFileName(file ? file.name : "");
+                    setSealFileName(file ? file.name : sealFileName);
                   }}
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                 />
                 <p className="mt-2 text-sm text-gray-500">
-                  출원인코드 등록 및 위임장 작성에 동일하게 사용할 인감도장 이미지를 업로드해
-                  주세요. PNG 파일을 권장합니다.
+                  출원인코드 등록 및 위임장 작성에 동일하게 사용할 인감도장 이미지를 업로드해 주세요.
+                  PNG 파일을 권장합니다.
                 </p>
               </div>
 
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-700">선택된 파일명</label>
                 <input
-                  value={sealFileName}
+                  value={sealFile ? sealFile.name : sealFileName}
                   readOnly
                   placeholder="선택된 인감도장 이미지 파일명이 표시됩니다"
                   className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 outline-none"
@@ -822,40 +977,56 @@ export default function ProgressPage() {
                   className="mt-1"
                 />
                 <span>
-                  업로드한 인감도장을 출원인코드 및 위임장 작성에 동일하게 사용하는 것에
-                  동의합니다.
+                  업로드한 인감도장을 출원인코드 및 위임장 작성에 동일하게 사용하는 것에 동의합니다.
                 </span>
               </label>
             </div>
-          </section>
-
-          {errorMessage && (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {errorMessage}
+          ) : (
+            <div className="grid gap-3">
+              <FieldRow label="업로드 파일명" value={sealFileName} />
+              <FieldRow label="동의 여부" value={form.seal_usage_agree ? "동의" : "미동의"} />
+              {sealFileUrl && (
+                <a
+                  href={sealFileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm font-medium text-blue-600 underline"
+                >
+                  등록된 인감 이미지 보기
+                </a>
+              )}
             </div>
           )}
+        </section>
 
-          {submitMessage && !errorMessage && (
-            <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-              {submitMessage}
-            </div>
-          )}
+        {errorMessage && (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {errorMessage}
+          </div>
+        )}
 
+        {submitMessage && !errorMessage && (
+          <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+            {submitMessage}
+          </div>
+        )}
+
+        {(canShowApplicantEdit || canShowTrademarkEdit || canShowSealEdit || !alreadySubmitted) && (
           <button
             type="submit"
             disabled={submitting}
             className="w-full rounded-2xl bg-black px-6 py-4 text-base font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {submitting ? "제출 중..." : "출원 정보 제출하기"}
+            {submitting ? "저장 중..." : alreadySubmitted ? "수정 내용 저장하기" : "출원 정보 제출하기"}
           </button>
-        </form>
-      )}
+        )}
+      </form>
 
-      {step === "payment" && (
-        <div className="space-y-6">
+      {(alreadySubmitted || payment?.exists) && (
+        <div className="mt-6 space-y-6">
           <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-3 text-2xl font-bold text-gray-900">결제 안내</h2>
-            <p className="mb-6 text-gray-600">출원 진행을 위해 결제를 진행해 주세요.</p>
+            <h2 className="mb-3 text-2xl font-bold text-gray-900">결제 정보</h2>
+            <p className="mb-6 text-gray-600">결제 상태를 확인해 주세요.</p>
 
             <div className="grid gap-4">
               <div className="rounded-xl bg-gray-50 p-4">
@@ -873,43 +1044,44 @@ export default function ProgressPage() {
               </div>
 
               <div className="rounded-xl bg-gray-50 p-4">
+                <div className="text-sm text-gray-500">결제 상태</div>
+                <div className="mt-1 font-semibold text-gray-900">
+                  {payment?.payment_status === "PAID" ? "결제 완료" : "결제 대기"}
+                </div>
+              </div>
+
+              <div className="rounded-xl bg-gray-50 p-4">
                 <div className="text-sm text-gray-500">입금 계좌</div>
                 <div className="mt-1 font-semibold text-gray-900">국민은행 693001-00-056923</div>
                 <div className="mt-1 text-sm text-gray-700">예금주: 특허법인성암</div>
               </div>
+
+              <div className="rounded-xl bg-gray-50 p-4">
+                <div className="text-sm text-gray-500">결제 완료 시각</div>
+                <div className="mt-1 font-semibold text-gray-900">{formatPaidAt(payment?.paid_at)}</div>
+              </div>
             </div>
+
+            {payment?.payment_status !== "PAID" && (
+              <button
+                type="button"
+                onClick={confirmPayment}
+                disabled={paymentLoading}
+                className="mt-6 w-full rounded-2xl bg-black px-6 py-4 text-base font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {paymentLoading ? "처리 중..." : "입금 완료했습니다"}
+              </button>
+            )}
           </section>
-
-          {errorMessage && (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {errorMessage}
-            </div>
-          )}
-
-          {submitMessage && !errorMessage && (
-            <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-              {submitMessage}
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={confirmPayment}
-            disabled={paymentLoading}
-            className="w-full rounded-2xl bg-black px-6 py-4 text-base font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {paymentLoading ? "처리 중..." : "입금 완료했습니다"}
-          </button>
         </div>
       )}
 
-      {step === "poa" && (
-        <div className="space-y-6">
+      {payment?.payment_status === "PAID" && (
+        <div className="mt-6 space-y-6">
           <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
             <h2 className="mb-3 text-2xl font-bold text-gray-900">위임장 확인</h2>
             <p className="mb-6 text-gray-600">
-              결제가 완료되었습니다. 위임일자를 확인한 뒤 위임장을 생성하고 내용을 확인해
-              주세요.
+              결제가 완료되었습니다. 위임일자를 확인한 뒤 위임장을 생성하고 내용을 확인해 주세요.
             </p>
 
             <div className="grid gap-5">
@@ -963,53 +1135,44 @@ export default function ProgressPage() {
                 새 창에서 위임장 보기
               </a>
 
-              <div className="mt-5">
-                <label className="flex items-start gap-3 rounded-xl bg-gray-50 px-4 py-4 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={poaSealConfirm}
-                    onChange={(e) => setPoaSealConfirm(e.target.checked)}
-                    className="mt-1"
-                  />
-                  <span>
-                    본 위임장에 표시된 인감은 본인이 제출한 인감 이미지와 동일함을 확인합니다.
-                  </span>
-                </label>
-              </div>
+              {!poaConfirmed && (
+                <>
+                  <div className="mt-5">
+                    <label className="flex items-start gap-3 rounded-xl bg-gray-50 px-4 py-4 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={poaSealConfirm}
+                        onChange={(e) => setPoaSealConfirm(e.target.checked)}
+                        className="mt-1"
+                      />
+                      <span>
+                        본 위임장에 표시된 인감은 본인이 제출한 인감 이미지와 동일함을 확인합니다.
+                      </span>
+                    </label>
+                  </div>
 
-              <div className="mt-5">
-                <button
-                  type="button"
-                  onClick={confirmPowerOfAttorney}
-                  disabled={poaConfirmLoading || !poaGenerated}
-                  className="w-full rounded-2xl bg-black px-6 py-4 text-base font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {poaConfirmLoading ? "제출 중..." : "위임장 확인 및 제출"}
-                </button>
-              </div>
+                  <div className="mt-5">
+                    <button
+                      type="button"
+                      onClick={confirmPowerOfAttorney}
+                      disabled={poaConfirmLoading || !poaGenerated}
+                      className="w-full rounded-2xl bg-black px-6 py-4 text-base font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {poaConfirmLoading ? "제출 중..." : "위임장 확인 및 제출"}
+                    </button>
+                  </div>
+                </>
+              )}
             </section>
-          )}
-
-          {errorMessage && (
-            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {errorMessage}
-            </div>
-          )}
-
-          {submitMessage && !errorMessage && (
-            <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-              {submitMessage}
-            </div>
           )}
         </div>
       )}
 
-      {step === "done" && (
-        <div className="rounded-2xl border border-green-200 bg-green-50 p-8 shadow-sm">
+      {poaConfirmed && (
+        <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-8 shadow-sm">
           <h2 className="mb-3 text-2xl font-bold text-green-800">위임장 확인이 완료되었습니다</h2>
           <p className="text-green-800">
-            결제와 위임장 확인이 정상적으로 완료되었습니다. 확인 후 출원 준비 단계로
-            진행됩니다.
+            결제와 위임장 확인이 정상적으로 완료되었습니다. 확인 후 출원 준비 단계로 진행됩니다.
           </p>
 
           {poaPreviewUrl && (
