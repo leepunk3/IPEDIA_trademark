@@ -697,7 +697,8 @@ export default function ProgressPage() {
           <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
             <h2 className="mb-5 text-xl font-bold text-gray-900">디자인 정보</h2>
 
-            <div>
+            <div className="grid gap-5">
+              <div>
                 <label className="mb-2 block text-sm font-medium text-gray-700">캐릭터명</label>
                 <input
                   name="character_name"
@@ -706,17 +707,18 @@ export default function ProgressPage() {
                   placeholder="캐릭터가 있을 경우 입력해 주세요"
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                 />
-            </div>
+              </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">물품명</label>
-              <input
-                name="design_product_name"
-                value={form.design_product_name}
-                onChange={updateField}
-                placeholder="예: 캐릭터 인형, 키링, 의류"
-                className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
-              />
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">물품명</label>
+                <input
+                  name="design_product_name"
+                  value={form.design_product_name}
+                  onChange={updateField}
+                  placeholder="예: 캐릭터 인형, 키링, 의류"
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
+                />
+              </div>              
             </div>
           </section>
 
