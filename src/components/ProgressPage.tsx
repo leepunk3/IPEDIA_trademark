@@ -671,28 +671,33 @@ export default function ProgressPage() {
 
             <div className="grid gap-5">
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">상표명 *</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">상표명(선택) *</label>
                 <input
                   name="trademark_name"
                   value={form.trademark_name}
                   onChange={updateField}
-                  placeholder="예: 아이디어블TV"
+                  placeholder="채널과 실제 출원할 상표명이 다를 경우 출원하실 상표명을 알려주세요"
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                 />
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">지정상품명 *</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">지정서비스명 *</label>
                 <textarea
                   name="goods_services"
                   value={form.goods_services}
                   onChange={updateField}
-                  placeholder="예: 의류, 모자, 온라인 교육 서비스, 유튜브 콘텐츠 제작업"
+                  placeholder="예: 온라인 교육 서비스, 유튜브 콘텐츠 제작업"
                   className="min-h-[120px] w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                 />
-              </div>
+              </div>              
+            </div>
+          </section>
 
-              <div>
+          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h2 className="mb-5 text-xl font-bold text-gray-900">디자인 정보</h2>
+
+            <div>
                 <label className="mb-2 block text-sm font-medium text-gray-700">캐릭터명</label>
                 <input
                   name="character_name"
@@ -701,12 +706,7 @@ export default function ProgressPage() {
                   placeholder="캐릭터가 있을 경우 입력해 주세요"
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                 />
-              </div>
             </div>
-          </section>
-
-          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-xl font-bold text-gray-900">디자인 정보</h2>
 
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-700">물품명</label>
