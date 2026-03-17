@@ -564,8 +564,7 @@ export default function ProgressPage() {
                   name="applicant_resident_number"
                   value={form.applicant_resident_number || ""}
                   onChange={updateField}
-                  placeholder="앞 6자리만 기재"
-                  maxLength={6}
+                  placeholder="전체 기재"
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                 />
               </div>
