@@ -548,7 +548,7 @@ export default function ProgressPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">영문명</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">영문명 *</label>
                 <input
                   name="applicant_name_eng"
                   value={form.applicant_name_eng}
@@ -559,7 +559,7 @@ export default function ProgressPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">주민등록번호</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">주민등록번호 *</label>
                 <input
                   name="applicant_resident_number"
                   value={form.applicant_resident_number || ""}
@@ -660,7 +660,7 @@ export default function ProgressPage() {
                     name="applicant_code"
                     value={form.applicant_code}
                     onChange={updateField}
-                    placeholder="출원인 코드를 입력해 주세요"
+                    placeholder="출원인 코드를 입력해 주세요(모를 경우 공란)"
                     className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                   />
                 </div>
@@ -685,7 +685,7 @@ export default function ProgressPage() {
 
             <div className="grid gap-5">
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">상표명(선택) *</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">상표명(선택)</label>
                 <input
                   name="trademark_name"
                   value={form.trademark_name}
@@ -722,7 +722,7 @@ export default function ProgressPage() {
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                 />
               </div>
-
+              
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-700">물품명</label>
                 <input
