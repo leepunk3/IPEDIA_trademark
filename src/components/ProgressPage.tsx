@@ -767,8 +767,8 @@ export default function ProgressPage() {
 
               <div className="rounded-xl bg-gray-50 p-4">
                 <div className="text-sm text-gray-500">입금 계좌</div>
-                <div className="mt-1 font-semibold text-gray-900">국민은행 123456-78-123456</div>
-                <div className="mt-1 text-sm text-gray-700">예금주: 아이디어블 변리사사무소</div>
+                <div className="mt-1 font-semibold text-gray-900">국민은행 693001-00-056923</div>
+                <div className="mt-1 text-sm text-gray-700">예금주: 특허법인성암</div>
               </div>
             </div>
           </section>
@@ -801,7 +801,7 @@ export default function ProgressPage() {
           <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
             <h2 className="mb-3 text-2xl font-bold text-gray-900">위임장 / 자료 업로드</h2>
             <p className="mb-6 text-gray-600">
-              결제가 완료되었습니다. 출원 진행을 위해 위임장 또는 필요한 자료를 업로드해 주세요.
+              결제가 완료되었습니다. 출원 진행을 위해 자료를 업로드해 주세요(위임장은 필수 업로드).
             </p>
 
             <form onSubmit={handleUploadSubmit} className="space-y-5">
@@ -812,11 +812,10 @@ export default function ProgressPage() {
                   onChange={(e) => setUploadType(e.target.value)}
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                 >
-                  <option value="POWER_OF_ATTORNEY">위임장</option>
+                  <option value="POWER_OF_ATTORNEY">위임장(필수)</option>
                   <option value="BUSINESS_CERTIFICATE">사업자등록증</option>
-                  <option value="LOGO_FILE">로고 파일</option>
-                  <option value="CHARACTER_IMAGE">캐릭터 이미지</option>
-                  <option value="DESIGN_IMAGE">디자인 이미지</option>
+                  <option value="LOGO_FILE">브랜드 파일</option>
+                  <option value="CHARACTER_IMAGE">캐릭터 파일(선택)</option>
                   <option value="OTHER">기타</option>
                 </select>
               </div>
@@ -902,7 +901,7 @@ export default function ProgressPage() {
         <div className="rounded-2xl border border-green-200 bg-green-50 p-8 shadow-sm">
           <h2 className="mb-3 text-2xl font-bold text-green-800">출원 준비 자료가 접수되었습니다</h2>
           <p className="text-green-800">
-            위임장/자료가 정상적으로 등록되었습니다. 확인 후 출원 준비 단계로 진행됩니다.
+            위임장 및 자료가 정상적으로 등록되었습니다. 확인 후 출원 준비 단계로 진행됩니다.
           </p>
         </div>
       )}
