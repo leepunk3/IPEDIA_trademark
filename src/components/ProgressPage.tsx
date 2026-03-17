@@ -498,7 +498,7 @@ export default function ProgressPage() {
       <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <h1 className="mb-2 text-3xl font-bold text-gray-900">고객 전용 진행 페이지</h1>
         <p className="mb-5 text-gray-600">
-          출원 진행을 위해 필요한 정보를 입력하고 결제를 진행해 주세요.
+          출원 진행을 위해 필요한 정보를 입력해 주세요.
         </p>
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -683,37 +683,40 @@ export default function ProgressPage() {
 
             <div className="grid gap-5">
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">상표명 *</label>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">채널명 *</label>
                 <input
                   name="trademark_name"
                   value={form.trademark_name}
                   onChange={updateField}
-                  placeholder="등록하고 싶은 상표명을 입력해 주세요"
+                  placeholder="채널명입니다"
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
+                />
+              </div>
+
+                <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">상표명(채널명이 아닌 다른 상표로 진행할 경우) *</label>
+                <input
+                  name="trademark_name"
+                  value={form.trademark_name || ""}
+                  onChange={updateField}
+                  placeholder="등록하고 싶은 상표명이 있다면 입력해 주세요(없으면 공란)"
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                 />
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">지정상품명 *</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">지정상품명(상표를 사용하실 비즈니스를 써주세요) *</label>
                 <textarea
                   name="goods_services"
                   value={form.goods_services}
                   onChange={updateField}
-                  placeholder="예: 의류, 모자, 교육 서비스, 콘텐츠 제작업"
+                  placeholder="예: 방송업, 의류 판매업, 교육 서비스업 등"
                   className="min-h-[120px] w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                 />
               </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">캐릭터명</label>
-                <input
-                  name="character_name"
-                  value={form.character_name}
-                  onChange={updateField}
-                  placeholder="캐릭터가 있을 경우 입력해 주세요"
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
-                />
-              </div>
             </div>
           </section>
 
@@ -721,7 +724,18 @@ export default function ProgressPage() {
             <h2 className="mb-5 text-xl font-bold text-gray-900">디자인 정보</h2>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-gray-700">물품명</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">캐릭터명(선택)</label>
+                <input
+                  name="character_name"
+                  value={form.character_name}
+                  onChange={updateField}
+                  placeholder="캐릭터 이름을 입력해 주세요"
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
+                />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-gray-700">물품명(캐릭터를 사용하실 비즈니스를 써주세요)</label>
               <input
                 name="design_product_name"
                 value={form.design_product_name}
