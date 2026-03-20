@@ -823,7 +823,7 @@ export default function ProgressPage() {
                       name="applicant_code"
                       value={form.applicant_code}
                       onChange={updateField}
-                      placeholder="출원인 코드를 입력해 주세요"
+                      placeholder="출원인 코드를 입력해 주세요(모르실 경우 공란)"
                       className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                     />
                   </div>
@@ -850,17 +850,6 @@ export default function ProgressPage() {
                     value={form.trademark_name}
                     onChange={updateField}
                     placeholder="채널과 실제 출원할 상표명이 다를 경우 입력해 주세요"
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700">상품류 *</label>
-                  <input
-                    name="class_codes"
-                    value={form.class_codes}
-                    onChange={updateField}
-                    placeholder="예: 제35류 또는 제9류, 제35류"
                     className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                   />
                 </div>
