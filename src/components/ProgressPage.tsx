@@ -23,6 +23,19 @@ type PaymentInfo = {
   paid_at?: string;
 };
 
+type ReviewInfo = {
+  exists: boolean;
+  review_status?: string;
+  send_ready?: string;
+  mail_sent?: string;
+  trademark_review?: string;
+  design_review?: string;
+  recommended_service?: string;
+  quoted_fee?: string;
+  review_message?: string;
+  review_sent_at?: string;
+};
+
 type ApplicantInfo = {
   applicant_type?: "개인" | "개인사업자" | "법인" | "";
   applicant_name?: string;
@@ -52,6 +65,7 @@ type ApiResponse = {
   data?: PageData;
   already_submitted?: boolean;
   payment?: PaymentInfo;
+  review?: ReviewInfo;
   applicant?: ApplicantInfo;
   file_url?: string;
   file_id?: string;
@@ -78,7 +92,6 @@ type FormState = {
   class_codes: string;
   character_name: string;
   design_product_name: string;
-  seal_usage_agree: boolean;
 };
 
 function getTokenFromUrl() {
@@ -97,10 +110,14 @@ function getStageLabel(stage?: string) {
       return "출원 정보 입력 요청";
     case "APPLICANT_INFO_SUBMITTED":
       return "출원 정보 제출 완료";
+    case "REVIEW_COMPLETED":
+      return "1차 검토 완료";
     case "PAYMENT_PENDING":
       return "결제 대기";
     case "PAYMENT_COMPLETED":
       return "결제 완료";
+    case "SEAL_UPLOADED":
+      return "인감 업로드 완료";
     case "POA_GENERATED":
       return "위임장 생성 완료";
     case "POA_CONFIRMED":
@@ -121,9 +138,8 @@ function formatDateInput(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-function formatPaidAt(value?: string) {
-  if (!value) return "-";
-  return value;
+function formatText(value?: string) {
+  return value && value.trim() ? value : "-";
 }
 
 function FieldRow({
@@ -145,10 +161,12 @@ export default function ProgressPage() {
   const [token, setToken] = useState("");
   const [pageData, setPageData] = useState<PageData | null>(null);
   const [payment, setPayment] = useState<PaymentInfo | null>(null);
+  const [review, setReview] = useState<ReviewInfo | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
+  const [sealUploading, setSealUploading] = useState(false);
   const [poaLoading, setPoaLoading] = useState(false);
   const [poaConfirmLoading, setPoaConfirmLoading] = useState(false);
 
@@ -159,11 +177,11 @@ export default function ProgressPage() {
 
   const [editingApplicant, setEditingApplicant] = useState(false);
   const [editingTrademark, setEditingTrademark] = useState(false);
-  const [editingSeal, setEditingSeal] = useState(false);
 
   const [sealFile, setSealFile] = useState<File | null>(null);
   const [sealFileName, setSealFileName] = useState("");
   const [sealFileUrl, setSealFileUrl] = useState("");
+  const [sealUsageAgree, setSealUsageAgree] = useState(false);
 
   const [poaDate, setPoaDate] = useState(formatDateInput(new Date()));
   const [poaPreviewUrl, setPoaPreviewUrl] = useState("");
@@ -188,7 +206,6 @@ export default function ProgressPage() {
     class_codes: "",
     character_name: "",
     design_product_name: "",
-    seal_usage_agree: false,
   });
 
   useEffect(() => {
@@ -224,9 +241,11 @@ export default function ProgressPage() {
         const data = result.data || null;
         const paymentInfo = result.payment || { exists: false };
         const applicant = result.applicant || {};
+        const reviewInfo = result.review || { exists: false };
 
         setPageData(data);
         setPayment(paymentInfo);
+        setReview(reviewInfo);
         setAlreadySubmitted(!!result.already_submitted);
 
         setForm({
@@ -247,11 +266,11 @@ export default function ProgressPage() {
           class_codes: applicant.class_codes || "",
           character_name: applicant.character_name || "",
           design_product_name: applicant.design_product_name || "",
-          seal_usage_agree: !!applicant.seal_usage_agree,
         });
 
         setSealFileName(applicant.seal_file_name || "");
         setSealFileUrl(applicant.seal_file_url || "");
+        setSealUsageAgree(!!applicant.seal_usage_agree);
         setPoaDate(applicant.poa_date_input || formatDateInput(new Date()));
         setPoaGenerated(!!result.poa_exists || !!result.poa_preview_url || !!result.file_url);
         setPoaConfirmed(!!result.poa_confirmed);
@@ -260,7 +279,6 @@ export default function ProgressPage() {
         if (result.already_submitted) {
           setEditingApplicant(false);
           setEditingTrademark(false);
-          setEditingSeal(false);
         }
       } catch (error) {
         setErrorMessage("진행 정보를 불러오는 중 오류가 발생했습니다.");
@@ -276,10 +294,12 @@ export default function ProgressPage() {
     () => form.applicant_type === "법인",
     [form.applicant_type]
   );
+
   const isApplicantCodeInputVisible = useMemo(
     () => form.applicant_code_status === "있음",
     [form.applicant_code_status]
   );
+
   const isApplicantCodeRequestVisible = useMemo(
     () => form.applicant_code_status === "없음",
     [form.applicant_code_status]
@@ -287,7 +307,11 @@ export default function ProgressPage() {
 
   const canShowApplicantEdit = !alreadySubmitted || editingApplicant;
   const canShowTrademarkEdit = !alreadySubmitted || editingTrademark;
-  const canShowSealEdit = !alreadySubmitted || editingSeal;
+
+  const reviewCompleted = !!review?.exists && String(review?.mail_sent || "").toUpperCase() === "Y";
+  const canShowPaymentSection = reviewCompleted;
+  const paymentCompleted = payment?.payment_status === "PAID";
+  const sealUploaded = !!sealFileName;
 
   const updateField = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -309,24 +333,23 @@ export default function ProgressPage() {
     }));
   };
 
-  const validate = () => {
+  const validateApplicant = () => {
     if (!form.applicant_type) return "출원인 유형을 선택해 주세요.";
     if (!form.applicant_name.trim()) return "출원인 국문 이름 또는 법인명을 입력해 주세요.";
     if (!form.applicant_resident_number.trim()) return "주민등록번호를 입력해 주세요.";
     if (!form.address.trim()) return "주소를 입력해 주세요.";
     if (!form.phone.trim()) return "전화번호를 입력해 주세요.";
     if (!form.email.trim()) return "이메일을 입력해 주세요.";
+    return "";
+  };
+
+  const validateTrademark = () => {
     if (!form.goods_services.trim()) return "지정서비스명을 입력해 주세요.";
-    if (!form.class_codes.trim()) return "상품류를 입력해 주세요.";
     if (form.applicant_code_status === "있음" && !form.applicant_code.trim()) {
       return "출원인 코드가 있다고 선택한 경우 출원인 코드를 입력해 주세요.";
     }
     if (form.applicant_code_status === "없음" && !form.applicant_code_issue_request) {
       return "출원인 코드가 없는 경우 신규 발급 요청에 체크해 주세요.";
-    }
-    if (!sealFile && !sealFileName) return "인감도장 이미지를 업로드해 주세요.";
-    if (!form.seal_usage_agree) {
-      return "인감도장 동일 사용 동의에 체크해 주세요.";
     }
     return "";
   };
@@ -345,61 +368,26 @@ export default function ProgressPage() {
       reader.readAsDataURL(file);
     });
 
-  const createPayment = async () => {
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/plain;charset=utf-8",
-      },
-      body: JSON.stringify({
-        action: "createPayment",
-        token,
-        payment_type: "TRADEMARK",
-        amount: "330000",
-      }),
-    });
-
-    const result: ApiResponse = await res.json();
-
-    if (result.success) {
-      setPayment({
-        exists: true,
-        payment_type: "TRADEMARK",
-        payment_amount: "330000",
-        payment_status: "PENDING",
-      });
-    }
-  };
-
   const handleApplicantSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
     setSubmitMessage("");
 
-    const validationMessage = validate();
-    if (validationMessage) {
-      setErrorMessage(validationMessage);
+    const applicantValidation = validateApplicant();
+    if (applicantValidation) {
+      setErrorMessage(applicantValidation);
       return;
     }
 
-    if (!sealFile && !sealFileName) {
-      setErrorMessage("인감도장 이미지를 업로드해 주세요.");
+    const trademarkValidation = validateTrademark();
+    if (trademarkValidation) {
+      setErrorMessage(trademarkValidation);
       return;
-    }
-
-    if (sealFile) {
-      const maxSize = 10 * 1024 * 1024;
-      if (sealFile.size > maxSize) {
-        setErrorMessage("인감도장 이미지 파일 크기는 10MB 이하만 업로드 가능합니다.");
-        return;
-      }
     }
 
     setSubmitting(true);
 
     try {
-      const sealBase64 = sealFile ? await fileToBase64(sealFile) : "";
-
       const res = await fetch(API_URL, {
         method: "POST",
         headers: {
@@ -409,9 +397,6 @@ export default function ProgressPage() {
           action: alreadySubmitted ? "updateApplicantIntake" : "saveApplicantIntake",
           token,
           ...form,
-          seal_file_name: sealFile ? sealFile.name : sealFileName,
-          seal_mime_type: sealFile ? sealFile.type || "application/octet-stream" : "",
-          seal_file_data: sealBase64,
         }),
       });
 
@@ -423,22 +408,11 @@ export default function ProgressPage() {
       }
 
       setSubmitMessage(
-        result.message || (alreadySubmitted ? "수정 내용이 저장되었습니다." : "입력이 정상적으로 접수되었습니다.")
+        result.message || (alreadySubmitted ? "수정 내용이 저장되었습니다." : "출원 정보가 제출되었습니다.")
       );
       setAlreadySubmitted(true);
       setEditingApplicant(false);
       setEditingTrademark(false);
-      setEditingSeal(false);
-
-      if (sealFile) {
-        setSealFileName(sealFile.name);
-        setSealFileUrl("");
-        setSealFile(null);
-      }
-
-      if (!alreadySubmitted) {
-        await createPayment();
-      }
     } catch (error) {
       setErrorMessage("저장 중 오류가 발생했습니다.");
     } finally {
@@ -478,11 +452,68 @@ export default function ProgressPage() {
         payment_method: "bank_transfer",
       }));
 
-      setSubmitMessage("결제가 완료되었습니다. 위임일자를 확인한 뒤 위임장을 생성해 주세요.");
+      setSubmitMessage("결제가 완료되었습니다. 다음 단계에서 인감도장을 업로드해 주세요.");
     } catch (error) {
       setErrorMessage("결제 완료 처리 중 오류가 발생했습니다.");
     } finally {
       setPaymentLoading(false);
+    }
+  };
+
+  const uploadSeal = async () => {
+    setSealUploading(true);
+    setErrorMessage("");
+    setSubmitMessage("");
+
+    try {
+      if (!sealFile) {
+        setErrorMessage("인감 이미지를 선택해 주세요.");
+        return;
+      }
+
+      const maxSize = 10 * 1024 * 1024;
+      if (sealFile.size > maxSize) {
+        setErrorMessage("인감도장 이미지 파일 크기는 10MB 이하만 업로드 가능합니다.");
+        return;
+      }
+
+      if (!sealUsageAgree) {
+        setErrorMessage("인감도장 동일 사용 동의에 체크해 주세요.");
+        return;
+      }
+
+      const base64 = await fileToBase64(sealFile);
+
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8",
+        },
+        body: JSON.stringify({
+          action: "uploadSeal",
+          token,
+          seal_file_name: sealFile.name,
+          seal_mime_type: sealFile.type || "application/octet-stream",
+          seal_file_data: base64,
+          seal_usage_agree: sealUsageAgree,
+        }),
+      });
+
+      const result: ApiResponse = await res.json();
+
+      if (!result.success) {
+        setErrorMessage(result.message || "인감 업로드에 실패했습니다.");
+        return;
+      }
+
+      setSealFileName(sealFile.name);
+      setSealFileUrl(result.file_url || "");
+      setSealFile(null);
+      setSubmitMessage(result.message || "인감도장 이미지가 업로드되었습니다.");
+    } catch (error) {
+      setErrorMessage("인감 업로드 중 오류가 발생했습니다.");
+    } finally {
+      setSealUploading(false);
     }
   };
 
@@ -514,15 +545,10 @@ export default function ProgressPage() {
         }
 
         if (
-          result.missing_fields?.includes("class_codes") ||
-          result.missing_fields?.includes("goods_services") ||
-          result.missing_fields?.includes("applicant_code")
+          result.missing_fields?.includes("applicant_code") ||
+          result.missing_fields?.includes("goods_services")
         ) {
           setEditingTrademark(true);
-        }
-
-        if (result.missing_fields?.includes("seal_file_id")) {
-          setEditingSeal(true);
         }
 
         return;
@@ -612,7 +638,7 @@ export default function ProgressPage() {
       <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <h1 className="mb-2 text-3xl font-bold text-gray-900">고객 전용 진행 페이지</h1>
         <p className="mb-5 text-gray-600">
-          각 단계의 입력 정보와 진행 상태를 아래에서 확인하고, 필요한 경우 수정해 주세요.
+          단계별 진행 상태를 확인하고, 필요한 경우 정보를 수정해 주세요.
         </p>
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -643,7 +669,7 @@ export default function ProgressPage() {
       <form onSubmit={handleApplicantSubmit} className="space-y-6">
         <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900">출원인 정보</h2>
+            <h2 className="text-xl font-bold text-gray-900">1. 출원인 정보</h2>
             {alreadySubmitted && (
               <button
                 type="button"
@@ -774,7 +800,7 @@ export default function ProgressPage() {
 
         <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900">출원인 코드 / 상표 정보</h2>
+            <h2 className="text-xl font-bold text-gray-900">2. 출원인 코드 / 상표 정보</h2>
             {alreadySubmitted && (
               <button
                 type="button"
@@ -902,88 +928,9 @@ export default function ProgressPage() {
                 }
               />
               <FieldRow label="상표명" value={form.trademark_name} />
-              <FieldRow label="상품류" value={form.class_codes} />
               <FieldRow label="지정서비스명" value={form.goods_services} />
               <FieldRow label="캐릭터명" value={form.character_name} />
               <FieldRow label="물품명" value={form.design_product_name} />
-            </div>
-          )}
-        </section>
-
-        <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900">인감도장 이미지</h2>
-            {alreadySubmitted && (
-              <button
-                type="button"
-                onClick={() => setEditingSeal((prev) => !prev)}
-                className="text-sm font-medium text-blue-600 underline"
-              >
-                {editingSeal ? "접기" : "수정하기"}
-              </button>
-            )}
-          </div>
-
-          {canShowSealEdit ? (
-            <div className="grid gap-5">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">
-                  인감도장 이미지 업로드 *
-                </label>
-                <input
-                  id="seal-file-upload"
-                  type="file"
-                  accept=".png,.jpg,.jpeg"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    setSealFile(file);
-                    setSealFileName(file ? file.name : sealFileName);
-                  }}
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
-                />
-                <p className="mt-2 text-sm text-gray-500">
-                  출원인코드 등록 및 위임장 작성에 동일하게 사용할 인감도장 이미지를 업로드해 주세요.
-                  PNG 파일을 권장합니다.
-                </p>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">선택된 파일명</label>
-                <input
-                  value={sealFile ? sealFile.name : sealFileName}
-                  readOnly
-                  placeholder="선택된 인감도장 이미지 파일명이 표시됩니다"
-                  className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 outline-none"
-                />
-              </div>
-
-              <label className="flex items-start gap-3 rounded-xl bg-gray-50 px-4 py-4 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  name="seal_usage_agree"
-                  checked={form.seal_usage_agree}
-                  onChange={updateField}
-                  className="mt-1"
-                />
-                <span>
-                  업로드한 인감도장을 출원인코드 및 위임장 작성에 동일하게 사용하는 것에 동의합니다.
-                </span>
-              </label>
-            </div>
-          ) : (
-            <div className="grid gap-3">
-              <FieldRow label="업로드 파일명" value={sealFileName} />
-              <FieldRow label="동의 여부" value={form.seal_usage_agree ? "동의" : "미동의"} />
-              {sealFileUrl && (
-                <a
-                  href={sealFileUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-sm font-medium text-blue-600 underline"
-                >
-                  등록된 인감 이미지 보기
-                </a>
-              )}
             </div>
           )}
         </section>
@@ -1000,7 +947,7 @@ export default function ProgressPage() {
           </div>
         )}
 
-        {(canShowApplicantEdit || canShowTrademarkEdit || canShowSealEdit || !alreadySubmitted) && (
+        {(canShowApplicantEdit || canShowTrademarkEdit || !alreadySubmitted) && (
           <button
             type="submit"
             disabled={submitting}
@@ -1011,11 +958,38 @@ export default function ProgressPage() {
         )}
       </form>
 
-      {(alreadySubmitted || payment?.exists) && (
+      {alreadySubmitted && (
+        <div className="mt-6 space-y-6">
+          {!reviewCompleted && (
+            <section className="rounded-2xl border border-yellow-200 bg-yellow-50 p-6 shadow-sm">
+              <h2 className="mb-3 text-2xl font-bold text-yellow-900">3. 1차 검토 진행 중</h2>
+              <p className="text-yellow-900">
+                변리사가 출원 정보를 검토 중입니다. 검토 완료 및 전송이 끝나면 아래에 검토 의견이 표시됩니다.
+              </p>
+            </section>
+          )}
+
+          {reviewCompleted && (
+            <section className="rounded-2xl border border-blue-200 bg-blue-50 p-6 shadow-sm">
+              <h2 className="mb-4 text-2xl font-bold text-blue-900">3. 1차 검토 결과</h2>
+              <div className="grid gap-3">
+                <FieldRow label="상표 검토 의견" value={formatText(review?.trademark_review)} />
+                <FieldRow label="디자인 검토 의견" value={formatText(review?.design_review)} />
+                <FieldRow label="추천 진행 방식" value={formatText(review?.recommended_service)} />
+                <FieldRow label="예상 비용" value={formatText(review?.quoted_fee)} />
+                <FieldRow label="추가 안내" value={formatText(review?.review_message)} />
+                <FieldRow label="검토 전송일" value={formatText(review?.review_sent_at)} />
+              </div>
+            </section>
+          )}
+        </div>
+      )}
+
+      {canShowPaymentSection && (
         <div className="mt-6 space-y-6">
           <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-3 text-2xl font-bold text-gray-900">결제 정보</h2>
-            <p className="mb-6 text-gray-600">결제 상태를 확인해 주세요.</p>
+            <h2 className="mb-3 text-2xl font-bold text-gray-900">4. 결제 정보</h2>
+            <p className="mb-6 text-gray-600">1차 검토 결과를 확인하셨다면 결제를 진행해 주세요.</p>
 
             <div className="grid gap-4">
               <div className="rounded-xl bg-gray-50 p-4">
@@ -1047,7 +1021,7 @@ export default function ProgressPage() {
 
               <div className="rounded-xl bg-gray-50 p-4">
                 <div className="text-sm text-gray-500">결제 완료 시각</div>
-                <div className="mt-1 font-semibold text-gray-900">{formatPaidAt(payment?.paid_at)}</div>
+                <div className="mt-1 font-semibold text-gray-900">{formatText(payment?.paid_at)}</div>
               </div>
             </div>
 
@@ -1065,12 +1039,82 @@ export default function ProgressPage() {
         </div>
       )}
 
-      {payment?.payment_status === "PAID" && (
+      {paymentCompleted && (
         <div className="mt-6 space-y-6">
           <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-3 text-2xl font-bold text-gray-900">위임장 확인</h2>
+            <h2 className="mb-5 text-2xl font-bold text-gray-900">5. 인감도장 이미지 업로드</h2>
+
+            <div className="grid gap-5">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  인감도장 이미지 업로드 *
+                </label>
+                <input
+                  type="file"
+                  accept=".png,.jpg,.jpeg"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    setSealFile(file);
+                  }}
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
+                />
+                <p className="mt-2 text-sm text-gray-500">
+                  위임장 및 출원인코드에 동일하게 사용할 인감도장 이미지를 업로드해 주세요.
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">선택된 파일명</label>
+                <input
+                  value={sealFile ? sealFile.name : sealFileName}
+                  readOnly
+                  placeholder="선택된 인감도장 이미지 파일명이 표시됩니다"
+                  className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 outline-none"
+                />
+              </div>
+
+              <label className="flex items-start gap-3 rounded-xl bg-gray-50 px-4 py-4 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={sealUsageAgree}
+                  onChange={(e) => setSealUsageAgree(e.target.checked)}
+                  className="mt-1"
+                />
+                <span>
+                  업로드한 인감도장을 출원인코드 및 위임장 작성에 동일하게 사용하는 것에 동의합니다.
+                </span>
+              </label>
+
+              {sealFileUrl && (
+                <a
+                  href={sealFileUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm font-medium text-blue-600 underline"
+                >
+                  등록된 인감 이미지 보기
+                </a>
+              )}
+
+              <button
+                type="button"
+                onClick={uploadSeal}
+                disabled={sealUploading}
+                className="w-full rounded-2xl bg-black px-6 py-4 text-base font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {sealUploading ? "업로드 중..." : sealUploaded ? "인감 다시 업로드하기" : "인감 업로드하기"}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {paymentCompleted && sealUploaded && (
+        <div className="mt-6 space-y-6">
+          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+            <h2 className="mb-3 text-2xl font-bold text-gray-900">6. 위임장 확인</h2>
             <p className="mb-6 text-gray-600">
-              결제가 완료되었습니다. 위임일자를 확인한 뒤 위임장을 생성하고 내용을 확인해 주세요.
+              인감 업로드가 완료되었습니다. 위임일자를 확인한 뒤 위임장을 생성하고 내용을 확인해 주세요.
             </p>
 
             <div className="grid gap-5">
@@ -1082,14 +1126,6 @@ export default function ProgressPage() {
                   onChange={(e) => setPoaDate(e.target.value)}
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                 />
-                <p className="mt-2 text-sm text-gray-500">
-                  위임장에 기재될 날짜입니다. 기본값은 오늘 날짜입니다.
-                </p>
-              </div>
-
-              <div className="rounded-xl bg-gray-50 p-4 text-sm text-gray-700">
-                복사된 위임장에는 상품류, 출원인 국문 이름, 주민등록번호, 출원인코드(특허고객번호),
-                동일 인감도장 이미지, 위임일자가 반영됩니다.
               </div>
 
               <button
@@ -1161,7 +1197,7 @@ export default function ProgressPage() {
         <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-8 shadow-sm">
           <h2 className="mb-3 text-2xl font-bold text-green-800">위임장 확인이 완료되었습니다</h2>
           <p className="text-green-800">
-            결제와 위임장 확인이 정상적으로 완료되었습니다. 확인 후 출원 준비 단계로 진행됩니다.
+            검토, 결제, 인감 업로드, 위임장 확인이 정상적으로 완료되었습니다.
           </p>
 
           {poaPreviewUrl && (
