@@ -615,7 +615,7 @@ export default function LandingPage() {
             
             <form className="space-y-4 md:space-y-5" onSubmit={handleSubmit}>
               <div className="space-y-2 md:space-y-3">
-               <label className="block text-base md:text-xl font-bold text-primary">유튜브 채널명 또는 URL
+               <label className="block text-base md:text-xl font-bold text-primary">채널명 (또는 원하는 상표명)
                </label>
               <input
                  type="text"
@@ -623,7 +623,7 @@ export default function LandingPage() {
                  value={channelInput}
                  onChange={(e) => setChannelInput(e.target.value)}
                  className="w-full bg-bg-light border border-border-light px-5 py-3 md:py-4 text-base md:text-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all rounded-xl md:rounded-2xl font-medium"
-                 placeholder="예: 짤툰 또는 https://www.youtube.com/@example"
+                 placeholder="예: OO 티비"
                />
               </div>
               <div className="space-y-2 md:space-y-3">
