@@ -13,18 +13,18 @@ type PageData = {
   current_stage?: string;
 };
 
-type PaymentInfo = {
-  exists: boolean;
-  payment_type?: string;
-  payment_amount?: string;
-  payment_status?: string;
-  payment_method?: string;
-  payment_reference?: string;
-  paid_at?: string;
+type AutoReviewInfo = {
+  ai_review_status?: string;
+  ai_review_code?: string;
+  ai_risk_level?: string;
+  ai_score?: string | number;
+  ai_reason?: string;
+  ai_need_manual?: string;
+  result_page_type?: "LOW_RISK" | "MEDIUM_RISK" | "HIGH_RISK" | "";
 };
 
 type ReviewInfo = {
-  exists: boolean;
+  exists?: boolean;
   review_status?: string;
   send_ready?: string;
   mail_sent?: string;
@@ -33,7 +33,48 @@ type ReviewInfo = {
   recommended_service?: string;
   quoted_fee?: string;
   review_message?: string;
+  ai_review_status?: string;
+  ai_review_code?: string;
+  ai_risk_level?: string;
+  ai_score?: string | number;
+  ai_reason?: string;
+  ai_need_manual?: string;
+  result_page_type?: string;
   review_sent_at?: string;
+};
+
+type PaymentInfo = {
+  exists?: boolean;
+  payment_status?: string;
+  payment_url?: string;
+  amount?: string | number;
+};
+
+type ApplicantInfo = {
+  trademark_name?: string;
+  goods_services?: string;
+  class_codes?: string;
+  applicant_name?: string;
+  email?: string;
+};
+
+type ApplicantPageResponse = {
+  success: boolean;
+  data: {
+    lead_id: string;
+    receipt_no: string;
+    channel_name: string;
+    email: string;
+    current_stage: string;
+  };
+  already_submitted: boolean;
+  payment: PaymentInfo;
+  review: ReviewInfo;
+  auto_review?: AutoReviewInfo;
+  applicant?: ApplicantInfo;
+  poa_exists?: boolean;
+  poa_preview_url?: string;
+  poa_confirmed?: boolean;
 };
 
 type ApplicantInfo = {
