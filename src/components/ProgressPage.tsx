@@ -142,21 +142,18 @@ function formatAmount(value?: string | number) {
   return `${num.toLocaleString("ko-KR")}원`;
 }
 
-function getStageLabel(stage?: string) {
+// 10) getStageLabel 함수도 프론트에서 아래처럼 맞추기
+function getStageLabel(stage) {
   switch (stage) {
     case "LEAD_RECEIVED":
       return "접수 완료";
-    case "AI_REVIEW_PENDING":
+    case "UNDER_REVIEW":
       return "AI 검토 진행 중";
-    case "AI_REVIEW_DONE":
-      return "AI 검토 완료";
-    case "AWAITING_APPLICANT_INFO":
+    case "WAITING_APPLICANT_INFO":
       return "출원 정보 입력 요청";
     case "APPLICANT_INFO_SUBMITTED":
       return "출원 정보 제출 완료";
-    case "MANUAL_REVIEW_PENDING":
-      return "재검토 진행 중";
-    case "MANUAL_REVIEW_DONE":
+    case "REVIEW_COMPLETED":
       return "검토 결과 안내";
     case "PAYMENT_PENDING":
       return "결제 대기";
