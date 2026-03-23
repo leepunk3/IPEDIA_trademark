@@ -1076,7 +1076,7 @@ export default function ProgressPage() {
                     name="trademark_name"
                     value={form.trademark_name}
                     onChange={updateField}
-                    placeholder="실제 출원할 상표명을 입력해 주세요"
+                    placeholder="실제 검토받을 상표명이 채널명과 다르면 입력해 주세요"
                     className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                   />
                 </div>
@@ -1098,7 +1098,7 @@ export default function ProgressPage() {
                     name="class_codes"
                     value={form.class_codes}
                     onChange={updateField}
-                    placeholder="예: 41"
+                    placeholder="예: 41 (생략 가능)"
                     className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                   />
                 </div>
