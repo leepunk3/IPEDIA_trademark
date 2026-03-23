@@ -1087,7 +1087,7 @@ export default function ProgressPage() {
                     name="goods_services"
                     value={form.goods_services}
                     onChange={updateField}
-                    placeholder="예: 온라인 교육 서비스, 유튜브 콘텐츠 제작업"
+                    placeholder="상표를 사용할 물품(예: 인형)/서비스(예: 교육 서비스, 콘텐츠 제작 등)가 있으면 더 정확한 진단을 받으실 수 있습니다. 가능한 범위에서 입력해주세요"
                     className="min-h-[120px] w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                   />
                 </div>
