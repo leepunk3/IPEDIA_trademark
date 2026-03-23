@@ -49,7 +49,10 @@ type PaymentInfo = {
   payment_url?: string;
   amount?: string | number;
   payment_amount?: string | number;
+  payer_name?: string;
   paid_at?: string;
+  payment_confirmed?: string;
+  confirmation_mail_sent?: string;
 };
 
 type ApplicantInfo = {
@@ -416,6 +419,8 @@ export default function ProgressPage() {
   const [poaConfirmed, setPoaConfirmed] = useState(false);
   const [poaSealConfirm, setPoaSealConfirm] = useState(false);
 
+  const [payerName, setPayerName] = useState("");
+
   const [form, setForm] = useState<FormState>({
     applicant_type: "",
     applicant_name: "",
@@ -464,6 +469,7 @@ export default function ProgressPage() {
       setReview(reviewInfo);
       setAutoReview(autoReviewInfo);
       setAlreadySubmitted(!!result.already_submitted);
+      setPayerName(String(paymentInfo.payer_name || ""));
 
       setForm({
         applicant_type: (applicant.applicant_type as FormState["applicant_type"]) || "",
@@ -527,6 +533,7 @@ export default function ProgressPage() {
   const reviewCompleted = !!review?.exists && String(review?.mail_sent || "").toUpperCase() === "Y";
   const canShowPaymentSection = reviewCompleted;
   const paymentCompleted = payment?.payment_status === "PAID";
+  const paymentRequested = payment?.payment_status === "REQUESTED";
   const sealUploaded = !!sealFileName;
 
   const updateField = (
@@ -634,39 +641,46 @@ export default function ProgressPage() {
   };
 
   const confirmPayment = async () => {
-  setPaymentLoading(true);
-  setErrorMessage("");
-  setSubmitMessage("");
+    setPaymentLoading(true);
+    setErrorMessage("");
+    setSubmitMessage("");
 
-  try {
-    const res = await fetch(API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/plain;charset=utf-8",
-      },
-      body: JSON.stringify({
-        action: "confirmPayment",
-        token,
-        method: "bank_transfer",
-        reference: "",
-      }),
-    });
-
-    const result: ApiResponse = await res.json();
-
-    if (!result.success) {
-      setErrorMessage(result.message || "결제 완료 처리에 실패했습니다.");
+    if (!payerName.trim()) {
+      setErrorMessage("예금주명을 입력해 주세요.");
+      setPaymentLoading(false);
       return;
     }
 
-    setSubmitMessage("결제가 완료되었습니다. 다음 단계에서 인감도장을 업로드해 주세요.");
-    await loadPage(token);
-  } catch (error) {
-    setErrorMessage("결제 완료 처리 중 오류가 발생했습니다.");
-  } finally {
-    setPaymentLoading(false);
-  }
-};
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8",
+        },
+        body: JSON.stringify({
+          action: "confirmPayment",
+          token,
+          method: "bank_transfer",
+          reference: "",
+          payer_name: payerName.trim(),
+        }),
+      });
+
+      const result: ApiResponse = await res.json();
+
+      if (!result.success) {
+        setErrorMessage(result.message || "결제 완료 처리에 실패했습니다.");
+        return;
+      }
+
+      setSubmitMessage("입금 확인중입니다.");
+      await loadPage(token);
+    } catch (error) {
+      setErrorMessage("결제 완료 처리 중 오류가 발생했습니다.");
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
 
   const uploadSeal = async () => {
     setSealUploading(true);
@@ -1180,9 +1194,20 @@ export default function ProgressPage() {
         <div className="mt-6 space-y-6">
           <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
             <h2 className="mb-3 text-2xl font-bold text-gray-900">결제 정보</h2>
-            <p className="mb-6 text-gray-600">재검토 결과를 확인하셨다면 결제를 진행해 주세요.</p>
 
-            <div className="grid gap-4">
+            {paymentCompleted ? (
+              <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm leading-7 text-green-800">
+                {formatAmount(payment?.amount ?? payment?.payment_amount ?? 0)} 입금이 확인되었습니다. 다음 단계 진행중입니다.
+              </div>
+            ) : paymentRequested ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-7 text-amber-900">
+                입금 확인중입니다.
+              </div>
+            ) : (
+              <p className="mb-6 text-gray-600">재검토 결과를 확인하셨다면 결제를 진행해 주세요.</p>
+            )}
+
+            <div className="mt-4 grid gap-4">
               <div className="rounded-xl bg-gray-50 p-4">
                 <div className="text-sm text-gray-500">결제 항목</div>
                 <div className="mt-1 font-semibold text-gray-900">상표 출원 진행</div>
@@ -1198,7 +1223,7 @@ export default function ProgressPage() {
               <div className="rounded-xl bg-gray-50 p-4">
                 <div className="text-sm text-gray-500">결제 상태</div>
                 <div className="mt-1 font-semibold text-gray-900">
-                  {payment?.payment_status === "PAID" ? "결제 완료" : "결제 대기"}
+                  {paymentCompleted ? "결제 완료" : paymentRequested ? "입금 확인중" : "결제 대기"}
                 </div>
               </div>
 
@@ -1209,19 +1234,30 @@ export default function ProgressPage() {
               </div>
 
               <div className="rounded-xl bg-gray-50 p-4">
+                <label className="mb-2 block text-sm text-gray-500">고객 예금주명</label>
+                <input
+                  value={payerName}
+                  onChange={(e) => setPayerName(e.target.value)}
+                  placeholder="입금자명을 입력해 주세요"
+                  disabled={paymentCompleted || paymentRequested}
+                  className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none disabled:bg-gray-100"
+                />
+              </div>
+
+              <div className="rounded-xl bg-gray-50 p-4">
                 <div className="text-sm text-gray-500">결제 완료 시각</div>
                 <div className="mt-1 font-semibold text-gray-900">{formatText(payment?.paid_at)}</div>
               </div>
             </div>
 
-            {payment?.payment_status !== "PAID" && (
+            {!paymentCompleted && !paymentRequested && (
               <button
                 type="button"
                 onClick={confirmPayment}
                 disabled={paymentLoading}
                 className="mt-6 w-full rounded-2xl bg-black px-6 py-4 text-base font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {paymentLoading ? "처리 중..." : "입금 완료했습니다"}
+                {paymentLoading ? "처리 중..." : "입금완료했습니다"}
               </button>
             )}
           </section>
