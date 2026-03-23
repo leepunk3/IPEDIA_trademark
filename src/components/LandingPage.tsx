@@ -36,49 +36,40 @@ export default function LandingPage() {
   const APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbys_NnSDz8R6B4ceYdbScr2utmQ5KZBmXuyqmax7xAybOfcHfbqyRw8yCwbCX3JxW5a/exec"
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+  setError("");
 
-    e.preventDefault()
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8",
+      },
+      body: JSON.stringify({
+        channel_input: channelInput,
+        email,
+        interest_type: interestType,
+        privacy_agree: privacyAgree ? "Y" : "N",
+      }),
+    });
 
-    const payload = {
-      channel_input: channelInput,
-      interest_type: interestType,
-      email: email,
-      privacy_agree: "Y"
+    const result = await res.json();
+
+    if (!result.success) {
+      setError(result.message || "전송 중 오류가 발생했습니다.");
+      return;
     }
 
-    try {
-
-      setIsSubmitting(true)
-
-      const response = await fetch(APPS_SCRIPT_URL,{
-        method:"POST",
-        headers:{
-          "Content-Type":"text/plain;charset=utf-8"
-        },
-        body:JSON.stringify(payload)
-      })
-
-      const result = await response.json()
-
-      if(result?.success){
-        setSuccessMessage("신청이 접수되었습니다. 이메일을 확인해주세요.")
-        setChannelInput("")
-        setInterestType("")
-        setEmail("")
-        setPrivacyAgree(false)
-      }else{
-        setErrorMessage("전송 오류")
-      }
-
-    }catch(err){
-      setErrorMessage("전송 중 오류가 발생했습니다.")
-    }
-
-    setIsSubmitting(false)
-
+    setSuccess(true);
+  } catch (err) {
+    setError("전송 중 오류가 발생했습니다.");
+  } finally {
+    setLoading(false);
   }
-
+};
+  
   return (
     <div className="min-h-screen flex flex-col w-full bg-white font-sans text-secondary">
       {/* Hero Section */}
