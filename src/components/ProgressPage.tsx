@@ -634,37 +634,39 @@ export default function ProgressPage() {
   };
 
   const confirmPayment = async () => {
-    setPaymentLoading(true);
-    setErrorMessage("");
-    setSubmitMessage("");
+  setPaymentLoading(true);
+  setErrorMessage("");
+  setSubmitMessage("");
 
-    try {
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({
-          action: "confirmPayment",
-          token,
-          method: "bank_transfer",
-          reference: "",
-        }),
-      });
+  try {
+    const res = await fetch(API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "text/plain;charset=utf-8",
+      },
+      body: JSON.stringify({
+        action: "confirmPayment",
+        token,
+        method: "bank_transfer",
+        reference: "",
+      }),
+    });
 
-      const result: ApiResponse = await res.json();
+    const result: ApiResponse = await res.json();
 
-      if (!result.success) {
-        setErrorMessage(result.message || "결제 완료 처리에 실패했습니다.");
-        return;
-      }
-
-      setSubmitMessage("결제가 완료되었습니다. 다음 단계에서 인감도장을 업로드해 주세요.");
-      await loadPage(token);
-    } catch (error) {
-      setErrorMessage("결제 완료 처리 중 오류가 발생했습니다.");
-    } finally {
-      setPaymentLoading(false);
+    if (!result.success) {
+      setErrorMessage(result.message || "결제 완료 처리에 실패했습니다.");
+      return;
     }
-  };
+
+    setSubmitMessage("결제가 완료되었습니다. 다음 단계에서 인감도장을 업로드해 주세요.");
+    await loadPage(token);
+  } catch (error) {
+    setErrorMessage("결제 완료 처리 중 오류가 발생했습니다.");
+  } finally {
+    setPaymentLoading(false);
+  }
+};
 
   const uploadSeal = async () => {
     setSealUploading(true);
