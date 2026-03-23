@@ -582,10 +582,10 @@ const handleSubmit = async (e: React.FormEvent) => {
                 
                 {[
                   { step: "STEP 1", title: "채널명 입력" },
-                  { step: "STEP 2", title: "검토 리포트" },
+                  { step: "STEP 2", title: "자동 검토 리포트" },
                   { step: "STEP 3", title: "출원 정보 입력" },
-                  { step: "STEP 4", title: "결제" },
-                  { step: "STEP 5", title: "출원" },
+                  { step: "STEP 4", title: "변리사 검토 리포트" },
+                  { step: "STEP 5", title: "결제 및 출원" },
                 ].map((item, idx) => (
                   <div key={idx} className="flex items-center gap-4 md:gap-6 relative group">
                     <div className="w-8 h-8 md:w-12 md:h-12 rounded-xl bg-accent flex items-center justify-center shrink-0 z-10 shadow-[0_0_20px_rgba(255,90,0,0.5)] transition-transform group-hover:scale-110">
