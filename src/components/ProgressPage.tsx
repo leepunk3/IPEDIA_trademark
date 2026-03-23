@@ -48,33 +48,8 @@ type PaymentInfo = {
   payment_status?: string;
   payment_url?: string;
   amount?: string | number;
-};
-
-type ApplicantInfo = {
-  trademark_name?: string;
-  goods_services?: string;
-  class_codes?: string;
-  applicant_name?: string;
-  email?: string;
-};
-
-type ApplicantPageResponse = {
-  success: boolean;
-  data: {
-    lead_id: string;
-    receipt_no: string;
-    channel_name: string;
-    email: string;
-    current_stage: string;
-  };
-  already_submitted: boolean;
-  payment: PaymentInfo;
-  review: ReviewInfo;
-  auto_review?: AutoReviewInfo;
-  applicant?: ApplicantInfo;
-  poa_exists?: boolean;
-  poa_preview_url?: string;
-  poa_confirmed?: boolean;
+  payment_amount?: string | number;
+  paid_at?: string;
 };
 
 type ApplicantInfo = {
@@ -107,6 +82,7 @@ type ApiResponse = {
   already_submitted?: boolean;
   payment?: PaymentInfo;
   review?: ReviewInfo;
+  auto_review?: AutoReviewInfo;
   applicant?: ApplicantInfo;
   file_url?: string;
   file_id?: string;
@@ -141,18 +117,44 @@ function getTokenFromUrl() {
   return params.get("token") || "";
 }
 
+function classNames(...values: Array<string | false | null | undefined>) {
+  return values.filter(Boolean).join(" ");
+}
+
+function formatDateInput(date: Date) {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function formatText(value?: string | number | boolean | null) {
+  return value === undefined || value === null || value === "" ? "-" : String(value);
+}
+
+function formatAmount(value?: string | number) {
+  if (value === undefined || value === null || value === "") return "-";
+  const num = Number(value);
+  if (Number.isNaN(num)) return String(value);
+  return `${num.toLocaleString("ko-KR")}원`;
+}
+
 function getStageLabel(stage?: string) {
   switch (stage) {
     case "LEAD_RECEIVED":
       return "접수 완료";
-    case "UNDER_REVIEW":
-      return "검토 중";
-    case "WAITING_APPLICANT_INFO":
+    case "AI_REVIEW_PENDING":
+      return "AI 검토 진행 중";
+    case "AI_REVIEW_DONE":
+      return "AI 검토 완료";
+    case "AWAITING_APPLICANT_INFO":
       return "출원 정보 입력 요청";
     case "APPLICANT_INFO_SUBMITTED":
       return "출원 정보 제출 완료";
-    case "REVIEW_COMPLETED":
-      return "1차 검토 완료";
+    case "MANUAL_REVIEW_PENDING":
+      return "재검토 진행 중";
+    case "MANUAL_REVIEW_DONE":
+      return "검토 결과 안내";
     case "PAYMENT_PENDING":
       return "결제 대기";
     case "PAYMENT_COMPLETED":
@@ -172,15 +174,42 @@ function getStageLabel(stage?: string) {
   }
 }
 
-function formatDateInput(date: Date) {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getDate()}`.padStart(2, "0");
-  return `${year}-${month}-${day}`;
+function getCurrentStepIndex(stage?: string) {
+  switch (stage) {
+    case "LEAD_RECEIVED":
+      return 0;
+    case "AI_REVIEW_PENDING":
+    case "AI_REVIEW_DONE":
+    case "AWAITING_APPLICANT_INFO":
+    case "APPLICANT_INFO_SUBMITTED":
+    case "MANUAL_REVIEW_PENDING":
+      return 1;
+    case "MANUAL_REVIEW_DONE":
+      return 2;
+    case "PAYMENT_PENDING":
+    case "PAYMENT_COMPLETED":
+      return 3;
+    case "SEAL_UPLOADED":
+      return 4;
+    case "POA_GENERATED":
+    case "POA_CONFIRMED":
+    case "READY_FOR_FILING":
+    case "FILED":
+      return 5;
+    default:
+      return 0;
+  }
 }
 
-function formatText(value?: string) {
-  return value && value.trim() ? value : "-";
+function getResultPageType(
+  autoReview?: AutoReviewInfo,
+  review?: ReviewInfo | null
+): "LOW_RISK" | "MEDIUM_RISK" | "HIGH_RISK" | "" {
+  return (
+    autoReview?.result_page_type ||
+    (review?.result_page_type as "LOW_RISK" | "MEDIUM_RISK" | "HIGH_RISK" | "") ||
+    ""
+  );
 }
 
 function FieldRow({
@@ -193,7 +222,164 @@ function FieldRow({
   return (
     <div className="rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-700">
       <span className="font-medium text-gray-900">{label}: </span>
-      <span>{value === undefined || value === null || value === "" ? "-" : String(value)}</span>
+      <span>{formatText(value)}</span>
+    </div>
+  );
+}
+
+function SectionCard({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      <h2 className="mb-4 text-xl font-bold text-gray-900">{title}</h2>
+      <div className="space-y-3 text-sm leading-7 text-gray-700">{children}</div>
+    </section>
+  );
+}
+
+function StepBar({ currentStage }: { currentStage?: string }) {
+  const steps = [
+    "채널명 접수",
+    "출원정보 제출",
+    "검토 결과 안내",
+    "결제",
+    "인감 업로드",
+    "위임장",
+  ];
+
+  const currentIndex = getCurrentStepIndex(currentStage);
+
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
+        {steps.map((step, idx) => {
+          const active = idx <= currentIndex;
+          return (
+            <div
+              key={step}
+              className={classNames(
+                "rounded-xl border px-3 py-3 text-center text-xs font-medium",
+                active
+                  ? "border-black bg-black text-white"
+                  : "border-gray-200 bg-gray-50 text-gray-500"
+              )}
+            >
+              <div className="mb-1 text-[11px] opacity-80">STEP {idx + 1}</div>
+              <div>{step}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ReviewHero({
+  trademarkName,
+  resultType,
+  reason,
+}: {
+  trademarkName: string;
+  resultType: "LOW_RISK" | "MEDIUM_RISK" | "HIGH_RISK" | "";
+  reason?: string;
+}) {
+  const badgeMap = {
+    LOW_RISK: "진행 가능성 양호",
+    MEDIUM_RISK: "보완 검토 필요",
+    HIGH_RISK: "거절 가능성 높음",
+    "": "검토 진행 중",
+  };
+
+  const titleMap = {
+    LOW_RISK: "현재 기준으로는 명백한 절대적 부등록 사유 가능성이 높지 않습니다.",
+    MEDIUM_RISK: "현재 채널명은 일부 표현 보완 또는 재검토가 필요한 상태입니다.",
+    HIGH_RISK: "현재 채널명은 그대로 출원할 경우 거절 가능성이 높은 상태입니다.",
+    "": "현재 검토가 진행 중입니다.",
+  };
+
+  return (
+    <div className="rounded-3xl bg-black px-6 py-8 text-white">
+      <div className="mb-3 inline-flex rounded-full bg-white/15 px-3 py-1 text-sm font-medium">
+        AI 검토 결과: {badgeMap[resultType]}
+      </div>
+      <h2 className="mb-2 text-2xl font-bold">{trademarkName || "채널명 미입력"}</h2>
+      <p className="mb-4 text-sm leading-7 text-gray-200">{titleMap[resultType]}</p>
+      {reason && (
+        <div className="rounded-2xl bg-white/10 p-4 text-sm leading-7 text-gray-100">
+          {reason}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ReviewResultSection({
+  trademarkName,
+  autoReview,
+  review,
+}: {
+  trademarkName: string;
+  autoReview?: AutoReviewInfo;
+  review?: ReviewInfo | null;
+}) {
+  const resultType = getResultPageType(autoReview, review || undefined);
+  const reason = autoReview?.ai_reason || review?.review_message || review?.trademark_review || "";
+
+  if (!resultType) {
+    return (
+      <section className="rounded-2xl border border-yellow-200 bg-yellow-50 p-6 shadow-sm">
+        <h2 className="mb-3 text-2xl font-bold text-yellow-900">AI 검토 진행 중</h2>
+        <p className="text-yellow-900">채널명 기준 자동 검토가 진행 중입니다.</p>
+      </section>
+    );
+  }
+
+  if (resultType === "HIGH_RISK") {
+    return (
+      <div className="space-y-6">
+        <ReviewHero trademarkName={trademarkName} resultType={resultType} reason={reason} />
+        <SectionCard title="왜 문제가 되나요">
+          <p>현재 채널명은 상품 또는 서비스의 성질, 용도, 특징을 직접 설명하는 표현으로 인식될 가능성이 있습니다.</p>
+          <p>이 경우 소비자는 이를 브랜드보다는 일반 설명으로 받아들일 수 있어 등록이 제한될 수 있습니다.</p>
+        </SectionCard>
+        <SectionCard title="권장 진행 방식">
+          <ul className="list-disc pl-5">
+            <li>대체 상표안 검토 후 진행</li>
+            <li>현재 상표명 기반 보완 검토</li>
+            <li>지정상품 조정 검토</li>
+          </ul>
+        </SectionCard>
+      </div>
+    );
+  }
+
+  if (resultType === "MEDIUM_RISK") {
+    return (
+      <div className="space-y-6">
+        <ReviewHero trademarkName={trademarkName} resultType={resultType} reason={reason} />
+        <SectionCard title="왜 보완 검토가 필요한가요">
+          <p>제출하신 채널명은 일부 표현이 브랜드 이름보다는 설명 문구처럼 인식될 가능성이 있습니다.</p>
+          <p>다만 지정상품 설정, 표현 보완, 출원 방향 조정을 통해 충분히 진행 방향을 잡을 수 있습니다.</p>
+        </SectionCard>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <ReviewHero trademarkName={trademarkName} resultType={resultType} reason={reason} />
+      <SectionCard title="왜 지금 진행하는 것이 좋나요">
+        <ul className="list-disc pl-5">
+          <li>브랜드를 계속 사용할 계획이라면 권리 확보를 먼저 하는 것이 유리합니다.</li>
+          <li>타인이 유사 명칭을 먼저 확보하기 전에 방향을 정할 수 있습니다.</li>
+          <li>초기 단계에서 정리할수록 브랜딩 비용을 줄일 수 있습니다.</li>
+        </ul>
+      </SectionCard>
     </div>
   );
 }
@@ -203,6 +389,7 @@ export default function ProgressPage() {
   const [pageData, setPageData] = useState<PageData | null>(null);
   const [payment, setPayment] = useState<PaymentInfo | null>(null);
   const [review, setReview] = useState<ReviewInfo | null>(null);
+  const [autoReview, setAutoReview] = useState<AutoReviewInfo | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -215,7 +402,6 @@ export default function ProgressPage() {
   const [submitMessage, setSubmitMessage] = useState("");
 
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
-
   const [editingApplicant, setEditingApplicant] = useState(false);
   const [editingTrademark, setEditingTrademark] = useState(false);
 
@@ -249,6 +435,75 @@ export default function ProgressPage() {
     design_product_name: "",
   });
 
+  const loadPage = async (t: string) => {
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({
+          action: "getApplicantPageData",
+          token: t,
+        }),
+      });
+
+      const result: ApiResponse = await res.json();
+
+      if (!result.success) {
+        setErrorMessage(result.message || "진행 정보를 불러오지 못했습니다.");
+        return;
+      }
+
+      const data = result.data || null;
+      const paymentInfo = result.payment || { exists: false };
+      const applicant = result.applicant || {};
+      const reviewInfo = result.review || { exists: false };
+      const autoReviewInfo = result.auto_review || {};
+
+      setPageData(data);
+      setPayment(paymentInfo);
+      setReview(reviewInfo);
+      setAutoReview(autoReviewInfo);
+      setAlreadySubmitted(!!result.already_submitted);
+
+      setForm({
+        applicant_type: (applicant.applicant_type as FormState["applicant_type"]) || "",
+        applicant_name: applicant.applicant_name || "",
+        applicant_name_eng: applicant.applicant_name_eng || "",
+        applicant_resident_number: applicant.applicant_resident_number || "",
+        representative_name: applicant.representative_name || "",
+        address: applicant.address || "",
+        phone: applicant.phone || "",
+        email: applicant.email || data?.email || "",
+        applicant_code_status:
+          (applicant.applicant_code_status as FormState["applicant_code_status"]) || "없음",
+        applicant_code: applicant.applicant_code || "",
+        applicant_code_issue_request: !!applicant.applicant_code_issue_request,
+        trademark_name: applicant.trademark_name || data?.channel_name || "",
+        goods_services: applicant.goods_services || "",
+        class_codes: applicant.class_codes || "",
+        character_name: applicant.character_name || "",
+        design_product_name: applicant.design_product_name || "",
+      });
+
+      setSealFileName(applicant.seal_file_name || "");
+      setSealFileUrl(applicant.seal_file_url || "");
+      setSealUsageAgree(!!applicant.seal_usage_agree);
+      setPoaDate(applicant.poa_date_input || formatDateInput(new Date()));
+      setPoaGenerated(!!result.poa_exists || !!result.poa_preview_url || !!result.file_url);
+      setPoaConfirmed(!!result.poa_confirmed);
+      setPoaPreviewUrl(result.poa_preview_url || result.file_url || "");
+
+      if (result.already_submitted) {
+        setEditingApplicant(false);
+        setEditingTrademark(false);
+      }
+    } catch (error) {
+      setErrorMessage("진행 정보를 불러오는 중 오류가 발생했습니다.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     const t = getTokenFromUrl();
     setToken(t);
@@ -259,92 +514,12 @@ export default function ProgressPage() {
       return;
     }
 
-    const load = async () => {
-      try {
-        const res = await fetch(API_URL, {
-          method: "POST",
-          headers: {
-            "Content-Type": "text/plain;charset=utf-8",
-          },
-          body: JSON.stringify({
-            action: "getApplicantPageData",
-            token: t,
-          }),
-        });
-
-        const result: ApiResponse = await res.json();
-
-        if (!result.success) {
-          setErrorMessage(result.message || "진행 정보를 불러오지 못했습니다.");
-          return;
-        }
-
-        const data = result.data || null;
-        const paymentInfo = result.payment || { exists: false };
-        const applicant = result.applicant || {};
-        const reviewInfo = result.review || { exists: false };
-
-        setPageData(data);
-        setPayment(paymentInfo);
-        setReview(reviewInfo);
-        setAlreadySubmitted(!!result.already_submitted);
-
-        setForm({
-          applicant_type: (applicant.applicant_type as FormState["applicant_type"]) || "",
-          applicant_name: applicant.applicant_name || "",
-          applicant_name_eng: applicant.applicant_name_eng || "",
-          applicant_resident_number: applicant.applicant_resident_number || "",
-          representative_name: applicant.representative_name || "",
-          address: applicant.address || "",
-          phone: applicant.phone || "",
-          email: applicant.email || data?.email || "",
-          applicant_code_status:
-            (applicant.applicant_code_status as FormState["applicant_code_status"]) || "없음",
-          applicant_code: applicant.applicant_code || "",
-          applicant_code_issue_request: !!applicant.applicant_code_issue_request,
-          trademark_name: applicant.trademark_name || "",
-          goods_services: applicant.goods_services || "",
-          class_codes: applicant.class_codes || "",
-          character_name: applicant.character_name || "",
-          design_product_name: applicant.design_product_name || "",
-        });
-
-        setSealFileName(applicant.seal_file_name || "");
-        setSealFileUrl(applicant.seal_file_url || "");
-        setSealUsageAgree(!!applicant.seal_usage_agree);
-        setPoaDate(applicant.poa_date_input || formatDateInput(new Date()));
-        setPoaGenerated(!!result.poa_exists || !!result.poa_preview_url || !!result.file_url);
-        setPoaConfirmed(!!result.poa_confirmed);
-        setPoaPreviewUrl(result.poa_preview_url || result.file_url || "");
-
-        if (result.already_submitted) {
-          setEditingApplicant(false);
-          setEditingTrademark(false);
-        }
-      } catch (error) {
-        setErrorMessage("진행 정보를 불러오는 중 오류가 발생했습니다.");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    void load();
+    void loadPage(t);
   }, []);
 
-  const isRepresentativeVisible = useMemo(
-    () => form.applicant_type === "법인",
-    [form.applicant_type]
-  );
-
-  const isApplicantCodeInputVisible = useMemo(
-    () => form.applicant_code_status === "있음",
-    [form.applicant_code_status]
-  );
-
-  const isApplicantCodeRequestVisible = useMemo(
-    () => form.applicant_code_status === "없음",
-    [form.applicant_code_status]
-  );
+  const isRepresentativeVisible = useMemo(() => form.applicant_type === "법인", [form.applicant_type]);
+  const isApplicantCodeInputVisible = useMemo(() => form.applicant_code_status === "있음", [form.applicant_code_status]);
+  const isApplicantCodeRequestVisible = useMemo(() => form.applicant_code_status === "없음", [form.applicant_code_status]);
 
   const canShowApplicantEdit = !alreadySubmitted || editingApplicant;
   const canShowTrademarkEdit = !alreadySubmitted || editingTrademark;
@@ -398,13 +573,11 @@ export default function ProgressPage() {
   const fileToBase64 = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
-
       reader.onload = () => {
         const result = reader.result as string;
         const base64 = result.split(",")[1];
         resolve(base64);
       };
-
       reader.onerror = reject;
       reader.readAsDataURL(file);
     });
@@ -431,9 +604,7 @@ export default function ProgressPage() {
     try {
       const res = await fetch(API_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "text/plain;charset=utf-8",
-        },
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({
           action: alreadySubmitted ? "updateApplicantIntake" : "saveApplicantIntake",
           token,
@@ -454,6 +625,7 @@ export default function ProgressPage() {
       setAlreadySubmitted(true);
       setEditingApplicant(false);
       setEditingTrademark(false);
+      await loadPage(token);
     } catch (error) {
       setErrorMessage("저장 중 오류가 발생했습니다.");
     } finally {
@@ -469,9 +641,7 @@ export default function ProgressPage() {
     try {
       const res = await fetch(API_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "text/plain;charset=utf-8",
-        },
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({
           action: "confirmPayment",
           token,
@@ -487,13 +657,8 @@ export default function ProgressPage() {
         return;
       }
 
-      setPayment((prev) => ({
-        ...(prev || { exists: true }),
-        payment_status: "PAID",
-        payment_method: "bank_transfer",
-      }));
-
       setSubmitMessage("결제가 완료되었습니다. 다음 단계에서 인감도장을 업로드해 주세요.");
+      await loadPage(token);
     } catch (error) {
       setErrorMessage("결제 완료 처리 중 오류가 발생했습니다.");
     } finally {
@@ -527,9 +692,7 @@ export default function ProgressPage() {
 
       const res = await fetch(API_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "text/plain;charset=utf-8",
-        },
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({
           action: "uploadSeal",
           token,
@@ -547,10 +710,8 @@ export default function ProgressPage() {
         return;
       }
 
-      setSealFileName(sealFile.name);
-      setSealFileUrl(result.file_url || "");
-      setSealFile(null);
       setSubmitMessage(result.message || "인감도장 이미지가 업로드되었습니다.");
+      await loadPage(token);
     } catch (error) {
       setErrorMessage("인감 업로드 중 오류가 발생했습니다.");
     } finally {
@@ -566,9 +727,7 @@ export default function ProgressPage() {
     try {
       const res = await fetch(API_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "text/plain;charset=utf-8",
-        },
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({
           action: "generatePowerOfAttorney",
           token,
@@ -581,24 +740,15 @@ export default function ProgressPage() {
       if (!result.success) {
         setErrorMessage(result.message || "위임장 생성에 실패했습니다.");
 
-        if (result.missing_fields?.includes("applicant_resident_number")) {
-          setEditingApplicant(true);
-        }
-
-        if (
-          result.missing_fields?.includes("applicant_code") ||
-          result.missing_fields?.includes("goods_services")
-        ) {
+        if (result.missing_fields?.includes("applicant_resident_number")) setEditingApplicant(true);
+        if (result.missing_fields?.includes("applicant_code") || result.missing_fields?.includes("class_codes")) {
           setEditingTrademark(true);
         }
-
         return;
       }
 
-      setPoaGenerated(true);
-      setPoaConfirmed(false);
-      setPoaPreviewUrl(result.poa_preview_url || result.file_url || "");
       setSubmitMessage(result.message || "위임장이 생성되었습니다. 내용을 확인해 주세요.");
+      await loadPage(token);
     } catch (error) {
       setErrorMessage("위임장 생성 중 오류가 발생했습니다.");
     } finally {
@@ -626,9 +776,7 @@ export default function ProgressPage() {
     try {
       const res = await fetch(API_URL, {
         method: "POST",
-        headers: {
-          "Content-Type": "text/plain;charset=utf-8",
-        },
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
         body: JSON.stringify({
           action: "confirmPowerOfAttorney",
           token,
@@ -644,8 +792,8 @@ export default function ProgressPage() {
         return;
       }
 
-      setPoaConfirmed(true);
       setSubmitMessage(result.message || "위임장 확인이 완료되었습니다.");
+      await loadPage(token);
     } catch (error) {
       setErrorMessage("위임장 확인 제출 중 오류가 발생했습니다.");
     } finally {
@@ -655,7 +803,7 @@ export default function ProgressPage() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-12">
+      <div className="mx-auto max-w-5xl px-4 py-12">
         <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
           <p className="text-gray-700">진행 정보를 불러오는 중입니다...</p>
         </div>
@@ -665,7 +813,7 @@ export default function ProgressPage() {
 
   if (errorMessage && !pageData) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-12">
+      <div className="mx-auto max-w-5xl px-4 py-12">
         <div className="rounded-2xl border border-red-200 bg-red-50 p-8 shadow-sm">
           <h1 className="mb-3 text-2xl font-bold text-red-700">진행 페이지 접근 오류</h1>
           <p className="text-red-700">{errorMessage}</p>
@@ -674,32 +822,27 @@ export default function ProgressPage() {
     );
   }
 
+  const trademarkName = form.trademark_name || pageData?.channel_name || "";
+
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10">
+    <div className="mx-auto max-w-5xl px-4 py-10">
       <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <h1 className="mb-2 text-3xl font-bold text-gray-900">고객 전용 진행 페이지</h1>
-        <p className="mb-5 text-gray-600">
-          단계별 진행 상태를 확인하고, 필요한 경우 정보를 수정해 주세요.
-        </p>
+        <p className="mb-5 text-gray-600">AI 검토 결과를 확인하고 출원인 정보와 상표 정보를 입력해 주세요.</p>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl bg-gray-50 p-4">
             <div className="text-sm text-gray-500">접수번호</div>
             <div className="mt-1 font-semibold text-gray-900">{pageData?.receipt_no || "-"}</div>
           </div>
-
           <div className="rounded-xl bg-gray-50 p-4">
             <div className="text-sm text-gray-500">현재 상태</div>
-            <div className="mt-1 font-semibold text-gray-900">
-              {getStageLabel(pageData?.current_stage)}
-            </div>
+            <div className="mt-1 font-semibold text-gray-900">{getStageLabel(pageData?.current_stage)}</div>
           </div>
-
           <div className="rounded-xl bg-gray-50 p-4">
             <div className="text-sm text-gray-500">채널명</div>
             <div className="mt-1 font-semibold text-gray-900">{pageData?.channel_name || "-"}</div>
           </div>
-
           <div className="rounded-xl bg-gray-50 p-4">
             <div className="text-sm text-gray-500">이메일</div>
             <div className="mt-1 font-semibold text-gray-900">{pageData?.email || "-"}</div>
@@ -707,10 +850,18 @@ export default function ProgressPage() {
         </div>
       </div>
 
+      <div className="mb-6">
+        <StepBar currentStage={pageData?.current_stage} />
+      </div>
+
+      <div className="mb-6">
+        <ReviewResultSection trademarkName={pageData?.channel_name || ""} autoReview={autoReview || undefined} review={review} />
+      </div>
+
       <form onSubmit={handleApplicantSubmit} className="space-y-6">
         <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900">1. 출원인 정보</h2>
+            <h2 className="text-xl font-bold text-gray-900">출원인 정보</h2>
             {alreadySubmitted && (
               <button
                 type="button"
@@ -740,9 +891,7 @@ export default function ProgressPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">
-                  출원인 국문 이름 또는 법인명 *
-                </label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">출원인 국문 이름 또는 법인명 *</label>
                 <input
                   name="applicant_name"
                   value={form.applicant_name}
@@ -829,9 +978,7 @@ export default function ProgressPage() {
               <FieldRow label="이름 또는 법인명" value={form.applicant_name} />
               <FieldRow label="영문명" value={form.applicant_name_eng} />
               <FieldRow label="주민등록번호" value={form.applicant_resident_number} />
-              {form.applicant_type === "법인" && (
-                <FieldRow label="대표자명" value={form.representative_name} />
-              )}
+              {form.applicant_type === "법인" && <FieldRow label="대표자명" value={form.representative_name} />}
               <FieldRow label="주소" value={form.address} />
               <FieldRow label="전화번호" value={form.phone} />
               <FieldRow label="이메일" value={form.email} />
@@ -841,7 +988,7 @@ export default function ProgressPage() {
 
         <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="mb-5 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900">2. 출원인 코드 / 상표 정보</h2>
+            <h2 className="text-xl font-bold text-gray-900">출원인 코드 / 상표 정보</h2>
             {alreadySubmitted && (
               <button
                 type="button"
@@ -890,7 +1037,7 @@ export default function ProgressPage() {
                       name="applicant_code"
                       value={form.applicant_code}
                       onChange={updateField}
-                      placeholder="출원인 코드를 입력해 주세요(모르실 경우 공란)"
+                      placeholder="출원인 코드를 입력해 주세요"
                       className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                     />
                   </div>
@@ -911,12 +1058,12 @@ export default function ProgressPage() {
 
               <div className="grid gap-5">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700">상표명(선택)</label>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">상표명</label>
                   <input
                     name="trademark_name"
                     value={form.trademark_name}
                     onChange={updateField}
-                    placeholder="채널과 실제 출원할 상표명이 다를 경우 입력해 주세요"
+                    placeholder="실제 출원할 상표명을 입력해 주세요"
                     className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                   />
                 </div>
@@ -929,6 +1076,17 @@ export default function ProgressPage() {
                     onChange={updateField}
                     placeholder="예: 온라인 교육 서비스, 유튜브 콘텐츠 제작업"
                     className="min-h-[120px] w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700">류 코드</label>
+                  <input
+                    name="class_codes"
+                    value={form.class_codes}
+                    onChange={updateField}
+                    placeholder="예: 41"
+                    className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                   />
                 </div>
 
@@ -970,6 +1128,7 @@ export default function ProgressPage() {
               />
               <FieldRow label="상표명" value={form.trademark_name} />
               <FieldRow label="지정서비스명" value={form.goods_services} />
+              <FieldRow label="류 코드" value={form.class_codes} />
               <FieldRow label="캐릭터명" value={form.character_name} />
               <FieldRow label="물품명" value={form.design_product_name} />
             </div>
@@ -999,38 +1158,27 @@ export default function ProgressPage() {
         )}
       </form>
 
-      {alreadySubmitted && (
+      {alreadySubmitted && reviewCompleted && (
         <div className="mt-6 space-y-6">
-          {!reviewCompleted && (
-            <section className="rounded-2xl border border-yellow-200 bg-yellow-50 p-6 shadow-sm">
-              <h2 className="mb-3 text-2xl font-bold text-yellow-900">3. 1차 검토 진행 중</h2>
-              <p className="text-yellow-900">
-                변리사가 출원 정보를 검토 중입니다. 검토 완료 및 전송이 끝나면 아래에 검토 의견이 표시됩니다.
-              </p>
-            </section>
-          )}
-
-          {reviewCompleted && (
-            <section className="rounded-2xl border border-blue-200 bg-blue-50 p-6 shadow-sm">
-              <h2 className="mb-4 text-2xl font-bold text-blue-900">3. 1차 검토 결과</h2>
-              <div className="grid gap-3">
-                <FieldRow label="상표 검토 의견" value={formatText(review?.trademark_review)} />
-                <FieldRow label="디자인 검토 의견" value={formatText(review?.design_review)} />
-                <FieldRow label="추천 진행 방식" value={formatText(review?.recommended_service)} />
-                <FieldRow label="예상 비용" value={formatText(review?.quoted_fee)} />
-                <FieldRow label="추가 안내" value={formatText(review?.review_message)} />
-                <FieldRow label="검토 전송일" value={formatText(review?.review_sent_at)} />
-              </div>
-            </section>
-          )}
+          <section className="rounded-2xl border border-blue-200 bg-blue-50 p-6 shadow-sm">
+            <h2 className="mb-4 text-2xl font-bold text-blue-900">재검토 결과</h2>
+            <div className="grid gap-3">
+              <FieldRow label="상표 검토 의견" value={review?.trademark_review} />
+              <FieldRow label="디자인 검토 의견" value={review?.design_review} />
+              <FieldRow label="추천 진행 방식" value={review?.recommended_service} />
+              <FieldRow label="예상 비용" value={review?.quoted_fee} />
+              <FieldRow label="추가 안내" value={review?.review_message} />
+              <FieldRow label="검토 전송일" value={review?.review_sent_at} />
+            </div>
+          </section>
         </div>
       )}
 
       {canShowPaymentSection && (
         <div className="mt-6 space-y-6">
           <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-3 text-2xl font-bold text-gray-900">4. 결제 정보</h2>
-            <p className="mb-6 text-gray-600">1차 검토 결과를 확인하셨다면 결제를 진행해 주세요.</p>
+            <h2 className="mb-3 text-2xl font-bold text-gray-900">결제 정보</h2>
+            <p className="mb-6 text-gray-600">재검토 결과를 확인하셨다면 결제를 진행해 주세요.</p>
 
             <div className="grid gap-4">
               <div className="rounded-xl bg-gray-50 p-4">
@@ -1041,9 +1189,7 @@ export default function ProgressPage() {
               <div className="rounded-xl bg-gray-50 p-4">
                 <div className="text-sm text-gray-500">결제 금액</div>
                 <div className="mt-1 font-semibold text-gray-900">
-                  {payment?.payment_amount
-                    ? `${Number(payment.payment_amount).toLocaleString()}원`
-                    : "330,000원"}
+                  {formatAmount(payment?.amount ?? payment?.payment_amount ?? 330000)}
                 </div>
               </div>
 
@@ -1083,13 +1229,11 @@ export default function ProgressPage() {
       {paymentCompleted && (
         <div className="mt-6 space-y-6">
           <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-2xl font-bold text-gray-900">5. 인감도장 이미지 업로드</h2>
+            <h2 className="mb-5 text-2xl font-bold text-gray-900">인감도장 이미지 업로드</h2>
 
             <div className="grid gap-5">
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">
-                  인감도장 이미지 업로드 *
-                </label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">인감도장 이미지 업로드 *</label>
                 <input
                   type="file"
                   accept=".png,.jpg,.jpeg"
@@ -1121,9 +1265,7 @@ export default function ProgressPage() {
                   onChange={(e) => setSealUsageAgree(e.target.checked)}
                   className="mt-1"
                 />
-                <span>
-                  업로드한 인감도장을 출원인코드 및 위임장 작성에 동일하게 사용하는 것에 동의합니다.
-                </span>
+                <span>업로드한 인감도장을 출원인코드 및 위임장 작성에 동일하게 사용하는 것에 동의합니다.</span>
               </label>
 
               {sealFileUrl && (
@@ -1153,10 +1295,8 @@ export default function ProgressPage() {
       {paymentCompleted && sealUploaded && (
         <div className="mt-6 space-y-6">
           <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-3 text-2xl font-bold text-gray-900">6. 위임장 확인</h2>
-            <p className="mb-6 text-gray-600">
-              인감 업로드가 완료되었습니다. 위임일자를 확인한 뒤 위임장을 생성하고 내용을 확인해 주세요.
-            </p>
+            <h2 className="mb-3 text-2xl font-bold text-gray-900">위임장 확인</h2>
+            <p className="mb-6 text-gray-600">인감 업로드가 완료되었습니다. 위임일자를 확인한 뒤 위임장을 생성하고 내용을 확인해 주세요.</p>
 
             <div className="grid gap-5">
               <div>
@@ -1185,11 +1325,7 @@ export default function ProgressPage() {
               <h3 className="mb-4 text-xl font-bold text-gray-900">위임장 미리보기</h3>
 
               <div className="mb-4 overflow-hidden rounded-xl border border-gray-200">
-                <iframe
-                  src={poaPreviewUrl}
-                  title="위임장 미리보기"
-                  className="h-[720px] w-full"
-                />
+                <iframe src={poaPreviewUrl} title="위임장 미리보기" className="h-[720px] w-full" />
               </div>
 
               <a
@@ -1211,9 +1347,7 @@ export default function ProgressPage() {
                         onChange={(e) => setPoaSealConfirm(e.target.checked)}
                         className="mt-1"
                       />
-                      <span>
-                        본 위임장에 표시된 인감은 본인이 제출한 인감 이미지와 동일함을 확인합니다.
-                      </span>
+                      <span>본 위임장에 표시된 인감은 본인이 제출한 인감 이미지와 동일함을 확인합니다.</span>
                     </label>
                   </div>
 
@@ -1237,9 +1371,7 @@ export default function ProgressPage() {
       {poaConfirmed && (
         <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-8 shadow-sm">
           <h2 className="mb-3 text-2xl font-bold text-green-800">위임장 확인이 완료되었습니다</h2>
-          <p className="text-green-800">
-            검토, 결제, 인감 업로드, 위임장 확인이 정상적으로 완료되었습니다.
-          </p>
+          <p className="text-green-800">검토, 결제, 인감 업로드, 위임장 확인이 정상적으로 완료되었습니다.</p>
 
           {poaPreviewUrl && (
             <a
