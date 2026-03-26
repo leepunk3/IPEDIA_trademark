@@ -245,8 +245,8 @@ function SectionCard({
 function StepBar({ currentStage }: { currentStage?: string }) {
   const steps = [
     "채널명 접수",
-    "출원정보 제출",
-    "검토 결과 안내",
+    "출원 기본 정보 제출",
+    "변리사 검토 결과 안내",
     "결제",
     "인감 업로드",
     "위임장",
@@ -296,15 +296,15 @@ function ReviewHero({
   };
 
   const titleMap = {
-    LOW_RISK: "현재 기준으로는 명백한 절대적 부등록 사유 가능성이 높지 않습니다.",
-    MEDIUM_RISK: "현재 채널명은 일부 표현 보완 또는 재검토가 필요한 상태입니다.",
+    LOW_RISK: "현재 채널명에는 상표 등록이 절대적으로 불가한 사유가 없어보입니다.",
+    MEDIUM_RISK: "현재 채널명은 일부 보완 또는 재검토가 필요한 상태입니다.",
     HIGH_RISK: "현재 채널명은 그대로 출원할 경우 거절 가능성이 높은 상태입니다.",
     "": "현재 검토가 진행 중입니다.",
   };
 
   return (
     <div className="rounded-3xl bg-black px-6 py-8 text-white">
-      <div className="mb-3 inline-flex rounded-full bg-white/15 px-3 py-1 text-sm font-medium">
+      <div className="mb-3 inline-flex rounded-full bg-white/15 px-3 py-1 text-2xl font-medium">
         AI 검토 결과: {badgeMap[resultType]}
       </div>
       <h2 className="mb-2 text-2xl font-bold">{trademarkName || "채널명 미입력"}</h2>
