@@ -39,11 +39,40 @@ export default function LandingPage() {
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
 
+  console.log("handleSubmit start");
+
   setIsSubmitting(true);
   setErrorMessage("");
   setSuccessMessage("");
 
+  // 🔹 기본 검증
+  if (!channelInput.trim()) {
+    setErrorMessage("채널명(또는 상표명)을 입력해 주세요.");
+    setIsSubmitting(false);
+    return;
+  }
+
+  if (!interestType.trim()) {
+    setErrorMessage("관심 서비스 유형을 선택해 주세요.");
+    setIsSubmitting(false);
+    return;
+  }
+
+  if (!email.trim()) {
+    setErrorMessage("이메일을 입력해 주세요.");
+    setIsSubmitting(false);
+    return;
+  }
+
+  if (!privacyAgree) {
+    setErrorMessage("개인정보 수집·이용에 동의해 주세요.");
+    setIsSubmitting(false);
+    return;
+  }
+
   try {
+    console.log("about to fetch:", API_URL);
+
     const res = await fetch(API_URL, {
       method: "POST",
       headers: {
@@ -51,29 +80,34 @@ const handleSubmit = async (e: React.FormEvent) => {
       },
       body: JSON.stringify({
         channel_input: channelInput,
-        email,
+        email: email,
         interest_type: interestType,
         privacy_agree: privacyAgree ? "Y" : "N",
       }),
     });
 
+    console.log("response status:", res.status);
+
     const result = await res.json();
-    console.log(result);
+    console.log("response data:", result);
 
     if (!result.success) {
       setErrorMessage(result.message || "전송 중 오류가 발생했습니다.");
       return;
     }
 
+    // ✅ 성공 처리
     setSuccessMessage("무료 검토 신청이 정상적으로 접수되었습니다.");
 
+    // 입력값 초기화
     setChannelInput("");
     setInterestType("");
     setEmail("");
     setPrivacyAgree(false);
 
-  } catch (error) {
-    setErrorMessage("전송 중 오류가 발생했습니다.");
+  } catch (error: any) {
+    console.error("fetch error:", error);
+    setErrorMessage("서버 연결 중 오류가 발생했습니다.");
   } finally {
     setIsSubmitting(false);
   }
