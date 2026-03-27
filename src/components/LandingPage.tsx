@@ -38,8 +38,9 @@ export default function LandingPage() {
 
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
-  setLoading(true);
-  setError("");
+  setIsSubmitting(true);
+  setErrorMessage("");
+  setSuccessMessage("");
 
   try {
     const res = await fetch(API_URL, {
@@ -49,24 +50,29 @@ const handleSubmit = async (e: React.FormEvent) => {
       },
       body: JSON.stringify({
         channel_input: channelInput,
-        email,
+        email: email,
         interest_type: interestType,
         privacy_agree: privacyAgree ? "Y" : "N",
       }),
     });
 
     const result = await res.json();
+    console.log("landing submit result:", result);
 
     if (!result.success) {
-      setError(result.message || "전송 중 오류가 발생했습니다.");
+      setErrorMessage(result.message || "전송 중 오류가 발생했습니다.");
       return;
     }
 
-    setSuccess(true);
-  } catch (err) {
-    setError("전송 중 오류가 발생했습니다.");
+    setSuccessMessage("무료 검토 신청이 정상적으로 접수되었습니다.");
+    setChannelInput("");
+    setInterestType("");
+    setEmail("");
+    setPrivacyAgree(false);
+  } catch (error) {
+    setErrorMessage("전송 중 오류가 발생했습니다.");
   } finally {
-    setLoading(false);
+    setIsSubmitting(false);
   }
 };
   
