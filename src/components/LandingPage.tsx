@@ -71,9 +71,10 @@ const handleSubmit = async (e: React.FormEvent) => {
   }
 
   try {
-    console.log("about to fetch:", API_URL);
+console.log("about to fetch:", APPS_SCRIPT_URL);
 
-    const res = await fetch(API_URL, {
+const res = await fetch(APPS_SCRIPT_URL, {
+
       method: "POST",
       headers: {
         "Content-Type": "text/plain;charset=utf-8",
