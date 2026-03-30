@@ -81,6 +81,7 @@ type ApplicantInfo = {
 type ApiResponse = {
   success?: boolean;
   message?: string;
+  next_step_message?: string;
   data?: PageData;
   already_submitted?: boolean;
   payment?: PaymentInfo;
@@ -142,7 +143,6 @@ function formatAmount(value?: string | number) {
   return `${num.toLocaleString("ko-KR")}원`;
 }
 
-// 10) getStageLabel 함수도 프론트에서 아래처럼 맞추기
 function getStageLabel(stage) {
   switch (stage) {
     case "LEAD_RECEIVED":
@@ -400,6 +400,7 @@ export default function ProgressPage() {
 
   const [errorMessage, setErrorMessage] = useState("");
   const [submitMessage, setSubmitMessage] = useState("");
+  const [nextStepMessage, setNextStepMessage] = useState("");
 
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [editingApplicant, setEditingApplicant] = useState(false);
@@ -590,6 +591,7 @@ export default function ProgressPage() {
     e.preventDefault();
     setErrorMessage("");
     setSubmitMessage("");
+    setNextStepMessage("");
 
     const applicantValidation = validateApplicant();
     if (applicantValidation) {
@@ -626,6 +628,11 @@ export default function ProgressPage() {
       setSubmitMessage(
         result.message || (alreadySubmitted ? "수정 내용이 저장되었습니다." : "출원 정보가 제출되었습니다.")
       );
+      setNextStepMessage(
+        result.next_step_message ||
+          (alreadySubmitted ? "변리사 검토 의견을 대기중입니다." : "")
+      );
+
       setAlreadySubmitted(true);
       setEditingApplicant(false);
       setEditingTrademark(false);
@@ -641,6 +648,7 @@ export default function ProgressPage() {
     setPaymentLoading(true);
     setErrorMessage("");
     setSubmitMessage("");
+    setNextStepMessage("");
 
     if (!payerName.trim()) {
       setErrorMessage("예금주명을 입력해 주세요.");
@@ -683,6 +691,7 @@ export default function ProgressPage() {
     setSealUploading(true);
     setErrorMessage("");
     setSubmitMessage("");
+    setNextStepMessage("");
 
     try {
       if (!sealFile) {
@@ -736,6 +745,7 @@ export default function ProgressPage() {
     setPoaLoading(true);
     setErrorMessage("");
     setSubmitMessage("");
+    setNextStepMessage("");
 
     try {
       const res = await fetch(API_URL, {
@@ -773,6 +783,7 @@ export default function ProgressPage() {
     setPoaConfirmLoading(true);
     setErrorMessage("");
     setSubmitMessage("");
+    setNextStepMessage("");
 
     if (!poaGenerated || !poaPreviewUrl) {
       setErrorMessage("먼저 위임장을 생성해 주세요.");
@@ -1155,8 +1166,16 @@ export default function ProgressPage() {
         )}
 
         {submitMessage && !errorMessage && (
-          <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-            {submitMessage}
+          <div className="space-y-3">
+            <div className="rounded-2xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+              {submitMessage}
+            </div>
+
+            {nextStepMessage && (
+              <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                다음 단계: {nextStepMessage}
+              </div>
+            )}
           </div>
         )}
 
