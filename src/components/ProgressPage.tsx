@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 const API_URL =
-  "https://script.google.com/macros/s/AKfycbxOGEQXYXoniFIv_fs2gLW6h8XXqTbJAz-Dgc01QvwD0M_wXPDUZRAHfl3H7DwjaMkb/exec";
+  "https://script.google.com/macros/s/AKfycbz7m0-rT2DvgTC4zbf6j5rpaz_EPEbZEM-6qI8xx47ZZRizCtWSp_fsi66XK-7mrlXI/exec";
 
 type PageData = {
   lead_id: string;
