@@ -72,10 +72,6 @@ type ApplicantInfo = {
   class_codes?: string;
   character_name?: string;
   design_product_name?: string;
-  seal_usage_agree?: boolean;
-  seal_file_name?: string;
-  seal_file_url?: string;
-  poa_date_input?: string;
 };
 
 type ApiResponse = {
@@ -88,12 +84,6 @@ type ApiResponse = {
   review?: ReviewInfo;
   auto_review?: AutoReviewInfo;
   applicant?: ApplicantInfo;
-  file_url?: string;
-  file_id?: string;
-  poa_exists?: boolean;
-  poa_preview_url?: string;
-  poa_confirmed?: boolean;
-  missing_fields?: string[];
 };
 
 type FormState = {
@@ -125,13 +115,6 @@ function classNames(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(" ");
 }
 
-function formatDateInput(date: Date) {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, "0");
-  const day = `${date.getDate()}`.padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 function formatText(value?: string | number | boolean | null) {
   return value === undefined || value === null || value === "" ? "-" : String(value);
 }
@@ -143,7 +126,7 @@ function formatAmount(value?: string | number) {
   return `${num.toLocaleString("ko-KR")}원`;
 }
 
-function getStageLabel(stage) {
+function getStageLabel(stage?: string) {
   switch (stage) {
     case "LEAD_RECEIVED":
       return "접수 완료";
@@ -158,15 +141,7 @@ function getStageLabel(stage) {
     case "PAYMENT_PENDING":
       return "결제 대기";
     case "PAYMENT_COMPLETED":
-      return "결제 완료";
-    case "SEAL_UPLOADED":
-      return "인감 업로드 완료";
-    case "POA_GENERATED":
-      return "위임장 생성 완료";
-    case "POA_CONFIRMED":
-      return "위임장 확인 완료";
-    case "READY_FOR_FILING":
-      return "출원 준비 가능";
+      return "접수 완료";
     case "FILED":
       return "출원 완료";
     default:
@@ -177,25 +152,18 @@ function getStageLabel(stage) {
 function getCurrentStepIndex(stage?: string) {
   switch (stage) {
     case "LEAD_RECEIVED":
+    case "UNDER_REVIEW":
       return 0;
-    case "AI_REVIEW_PENDING":
-    case "AI_REVIEW_DONE":
-    case "AWAITING_APPLICANT_INFO":
-    case "APPLICANT_INFO_SUBMITTED":
-    case "MANUAL_REVIEW_PENDING":
+    case "WAITING_APPLICANT_INFO":
       return 1;
-    case "MANUAL_REVIEW_DONE":
+    case "APPLICANT_INFO_SUBMITTED":
+    case "REVIEW_COMPLETED":
       return 2;
     case "PAYMENT_PENDING":
+      return 2;
     case "PAYMENT_COMPLETED":
-      return 3;
-    case "SEAL_UPLOADED":
-      return 4;
-    case "POA_GENERATED":
-    case "POA_CONFIRMED":
-    case "READY_FOR_FILING":
     case "FILED":
-      return 5;
+      return 3;
     default:
       return 0;
   }
@@ -244,24 +212,22 @@ function SectionCard({
 
 function StepBar({ currentStage }: { currentStage?: string }) {
   const steps = [
-    "채널명 접수",
-    "출원 기본 정보 제출",
-    "변리사 검토 결과 안내",
-    "결제",
-    "인감 업로드",
-    "위임장",
+    { key: "review", label: "검토 결과" },
+    { key: "applicant", label: "출원 정보 입력" },
+    { key: "payment", label: "결제 진행" },
+    { key: "done", label: "접수 완료" },
   ];
 
   const currentIndex = getCurrentStepIndex(currentStage);
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {steps.map((step, idx) => {
           const active = idx <= currentIndex;
           return (
             <div
-              key={step}
+              key={step.key}
               className={classNames(
                 "rounded-xl border px-3 py-3 text-center text-xs font-medium",
                 active
@@ -270,7 +236,7 @@ function StepBar({ currentStage }: { currentStage?: string }) {
               )}
             >
               <div className="mb-1 text-[11px] opacity-80">STEP {idx + 1}</div>
-              <div>{step}</div>
+              <div>{step.label}</div>
             </div>
           );
         })}
@@ -296,7 +262,7 @@ function ReviewHero({
   };
 
   const titleMap = {
-    LOW_RISK: "현재 채널명에는 상표 등록이 절대적으로 불가한 사유가 없어보입니다.",
+    LOW_RISK: "현재 채널명에는 상표 등록이 불가한 사유가 없어보입니다.",
     MEDIUM_RISK: "현재 채널명은 일부 보완 또는 재검토가 필요한 상태입니다.",
     HIGH_RISK: "현재 채널명은 그대로 출원할 경우 거절 가능성이 높은 상태입니다.",
     "": "현재 검토가 진행 중입니다.",
@@ -334,7 +300,7 @@ function ReviewResultSection({
     return (
       <section className="rounded-2xl border border-yellow-200 bg-yellow-50 p-6 shadow-sm">
         <h2 className="mb-3 text-2xl font-bold text-yellow-900">AI 검토 진행 중</h2>
-        <p className="text-yellow-900">채널명 기준 자동 검토가 진행 중입니다.</p>
+        <p className="text-yellow-900">자동 검토가 진행 중입니다.</p>
       </section>
     );
   }
@@ -375,9 +341,9 @@ function ReviewResultSection({
       <ReviewHero trademarkName={trademarkName} resultType={resultType} reason={reason} />
       <SectionCard title="왜 지금 진행하는 것이 좋나요">
         <ul className="list-disc pl-5">
-          <li>브랜드를 계속 사용할 계획이라면 권리 확보를 먼저 하는 것이 유리합니다.</li>
-          <li>타인이 유사 명칭을 먼저 확보하기 전에 방향을 정할 수 있습니다.</li>
-          <li>초기 단계에서 정리할수록 브랜딩 비용을 줄일 수 있습니다.</li>
+          <li>브랜드를 안전하게 사용할 계획이라면 상표권을 먼저 확보하는 것이 유리합니다.</li>
+          <li>다른 사람이 유사한 상표를 등록받기 전에 먼저 등록해야 합니다.</li>
+          <li>초기에 권리를 등록받으면 브랜드 변경 리스크를 줄일 수 있습니다.</li>
         </ul>
       </SectionCard>
     </div>
@@ -394,9 +360,6 @@ export default function ProgressPage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
-  const [sealUploading, setSealUploading] = useState(false);
-  const [poaLoading, setPoaLoading] = useState(false);
-  const [poaConfirmLoading, setPoaConfirmLoading] = useState(false);
 
   const [errorMessage, setErrorMessage] = useState("");
   const [submitMessage, setSubmitMessage] = useState("");
@@ -405,17 +368,6 @@ export default function ProgressPage() {
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [editingApplicant, setEditingApplicant] = useState(false);
   const [editingTrademark, setEditingTrademark] = useState(false);
-
-  const [sealFile, setSealFile] = useState<File | null>(null);
-  const [sealFileName, setSealFileName] = useState("");
-  const [sealFileUrl, setSealFileUrl] = useState("");
-  const [sealUsageAgree, setSealUsageAgree] = useState(false);
-
-  const [poaDate, setPoaDate] = useState(formatDateInput(new Date()));
-  const [poaPreviewUrl, setPoaPreviewUrl] = useState("");
-  const [poaGenerated, setPoaGenerated] = useState(false);
-  const [poaConfirmed, setPoaConfirmed] = useState(false);
-  const [poaSealConfirm, setPoaSealConfirm] = useState(false);
 
   const [payerName, setPayerName] = useState("");
 
@@ -489,14 +441,6 @@ export default function ProgressPage() {
         design_product_name: applicant.design_product_name || "",
       });
 
-      setSealFileName(applicant.seal_file_name || "");
-      setSealFileUrl(applicant.seal_file_url || "");
-      setSealUsageAgree(!!applicant.seal_usage_agree);
-      setPoaDate(applicant.poa_date_input || formatDateInput(new Date()));
-      setPoaGenerated(!!result.poa_exists || !!result.poa_preview_url || !!result.file_url);
-      setPoaConfirmed(!!result.poa_confirmed);
-      setPoaPreviewUrl(result.poa_preview_url || result.file_url || "");
-
       if (result.already_submitted) {
         setEditingApplicant(false);
         setEditingTrademark(false);
@@ -530,9 +474,10 @@ export default function ProgressPage() {
 
   const reviewCompleted = !!review?.exists && String(review?.mail_sent || "").toUpperCase() === "Y";
   const canShowPaymentSection = reviewCompleted;
-  const paymentCompleted = payment?.payment_status === "PAID";
+  const paymentCompleted =
+    pageData?.current_stage === "PAYMENT_COMPLETED" ||
+    payment?.payment_status === "PAID";
   const paymentRequested = payment?.payment_status === "REQUESTED";
-  const sealUploaded = !!sealFileName;
 
   const updateField = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -574,18 +519,6 @@ export default function ProgressPage() {
     }
     return "";
   };
-
-  const fileToBase64 = (file: File): Promise<string> =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        const base64 = result.split(",")[1];
-        resolve(base64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
 
   const handleApplicantSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -687,144 +620,6 @@ export default function ProgressPage() {
     }
   };
 
-  const uploadSeal = async () => {
-    setSealUploading(true);
-    setErrorMessage("");
-    setSubmitMessage("");
-    setNextStepMessage("");
-
-    try {
-      if (!sealFile) {
-        setErrorMessage("인감 이미지를 선택해 주세요.");
-        return;
-      }
-
-      const maxSize = 10 * 1024 * 1024;
-      if (sealFile.size > maxSize) {
-        setErrorMessage("인감도장 이미지 파일 크기는 10MB 이하만 업로드 가능합니다.");
-        return;
-      }
-
-      if (!sealUsageAgree) {
-        setErrorMessage("인감도장 동일 사용 동의에 체크해 주세요.");
-        return;
-      }
-
-      const base64 = await fileToBase64(sealFile);
-
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({
-          action: "uploadSeal",
-          token,
-          seal_file_name: sealFile.name,
-          seal_mime_type: sealFile.type || "application/octet-stream",
-          seal_file_data: base64,
-          seal_usage_agree: sealUsageAgree,
-        }),
-      });
-
-      const result: ApiResponse = await res.json();
-
-      if (!result.success) {
-        setErrorMessage(result.message || "인감 업로드에 실패했습니다.");
-        return;
-      }
-
-      setSubmitMessage(result.message || "인감도장 이미지가 업로드되었습니다.");
-      await loadPage(token);
-    } catch (error) {
-      setErrorMessage("인감 업로드 중 오류가 발생했습니다.");
-    } finally {
-      setSealUploading(false);
-    }
-  };
-
-  const generatePowerOfAttorney = async () => {
-    setPoaLoading(true);
-    setErrorMessage("");
-    setSubmitMessage("");
-    setNextStepMessage("");
-
-    try {
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({
-          action: "generatePowerOfAttorney",
-          token,
-          poa_date: poaDate,
-        }),
-      });
-
-      const result: ApiResponse = await res.json();
-
-      if (!result.success) {
-        setErrorMessage(result.message || "위임장 생성에 실패했습니다.");
-
-        if (result.missing_fields?.includes("applicant_resident_number")) setEditingApplicant(true);
-        if (result.missing_fields?.includes("applicant_code") || result.missing_fields?.includes("class_codes")) {
-          setEditingTrademark(true);
-        }
-        return;
-      }
-
-      setSubmitMessage(result.message || "위임장이 생성되었습니다. 내용을 확인해 주세요.");
-      await loadPage(token);
-    } catch (error) {
-      setErrorMessage("위임장 생성 중 오류가 발생했습니다.");
-    } finally {
-      setPoaLoading(false);
-    }
-  };
-
-  const confirmPowerOfAttorney = async () => {
-    setPoaConfirmLoading(true);
-    setErrorMessage("");
-    setSubmitMessage("");
-    setNextStepMessage("");
-
-    if (!poaGenerated || !poaPreviewUrl) {
-      setErrorMessage("먼저 위임장을 생성해 주세요.");
-      setPoaConfirmLoading(false);
-      return;
-    }
-
-    if (!poaSealConfirm) {
-      setErrorMessage("위임장 인감 확인에 체크해 주세요.");
-      setPoaConfirmLoading(false);
-      return;
-    }
-
-    try {
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify({
-          action: "confirmPowerOfAttorney",
-          token,
-          poa_date: poaDate,
-          poa_confirmed: true,
-        }),
-      });
-
-      const result: ApiResponse = await res.json();
-
-      if (!result.success) {
-        setErrorMessage(result.message || "위임장 확인 제출에 실패했습니다.");
-        return;
-      }
-
-      setSubmitMessage(result.message || "위임장 확인이 완료되었습니다.");
-      await loadPage(token);
-    } catch (error) {
-      setErrorMessage("위임장 확인 제출 중 오류가 발생했습니다.");
-    } finally {
-      setPoaConfirmLoading(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-12">
@@ -845,8 +640,6 @@ export default function ProgressPage() {
       </div>
     );
   }
-
-  const trademarkName = form.trademark_name || pageData?.channel_name || "";
 
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
@@ -879,7 +672,11 @@ export default function ProgressPage() {
       </div>
 
       <div className="mb-6">
-        <ReviewResultSection trademarkName={pageData?.channel_name || ""} autoReview={autoReview || undefined} review={review} />
+        <ReviewResultSection
+          trademarkName={pageData?.channel_name || ""}
+          autoReview={autoReview || undefined}
+          review={review}
+        />
       </div>
 
       <form onSubmit={handleApplicantSubmit} className="space-y-6">
@@ -915,12 +712,12 @@ export default function ProgressPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">출원인 국문 이름 또는 법인명 *</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">출원인의 국문 이름 또는 법인명 *</label>
                 <input
                   name="applicant_name"
                   value={form.applicant_name}
                   onChange={updateField}
-                  placeholder="예: 홍길동 또는 ABC 주식회사"
+                  placeholder="예: 홍길동 또는 홍길동 주식회사"
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                 />
               </div>
@@ -942,7 +739,7 @@ export default function ProgressPage() {
                   name="applicant_resident_number"
                   value={form.applicant_resident_number}
                   onChange={updateField}
-                  placeholder="전체 기재"
+                  placeholder="전체 기재(-를 넣어주세요)"
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                 />
               </div>
@@ -1098,19 +895,8 @@ export default function ProgressPage() {
                     name="goods_services"
                     value={form.goods_services}
                     onChange={updateField}
-                    placeholder="상표를 사용할 물품(예: 인형)/서비스(예: 교육 서비스, 콘텐츠 제작 등)가 있으면 더 정확한 진단을 받으실 수 있습니다. 가능한 범위에서 입력해주세요"
+                    placeholder="상표를 사용할 물품(예: 인형)/서비스(예: 교육, 콘텐츠 제작)가 있으면 더 정확한 진단을 받으실 수 있습니다."
                     className="min-h-[120px] w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700">류 코드</label>
-                  <input
-                    name="class_codes"
-                    value={form.class_codes}
-                    onChange={updateField}
-                    placeholder="예: 41 (생략 가능)"
-                    className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                   />
                 </div>
 
@@ -1120,7 +906,7 @@ export default function ProgressPage() {
                     name="character_name"
                     value={form.character_name}
                     onChange={updateField}
-                    placeholder="캐릭터가 있을 경우 입력해 주세요"
+                    placeholder="캐릭터가 있을 경우 입력해 주세요(선택)"
                     className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
                   />
                 </div>
@@ -1152,7 +938,6 @@ export default function ProgressPage() {
               />
               <FieldRow label="상표명" value={form.trademark_name} />
               <FieldRow label="지정서비스명" value={form.goods_services} />
-              <FieldRow label="류 코드" value={form.class_codes} />
               <FieldRow label="캐릭터명" value={form.character_name} />
               <FieldRow label="물품명" value={form.design_product_name} />
             </div>
@@ -1179,7 +964,7 @@ export default function ProgressPage() {
           </div>
         )}
 
-        {(canShowApplicantEdit || canShowTrademarkEdit || !alreadySubmitted) && (
+        {(canShowApplicantEdit || canShowTrademarkEdit || !alreadySubmitted) && !paymentCompleted && (
           <button
             type="submit"
             disabled={submitting}
@@ -1206,16 +991,12 @@ export default function ProgressPage() {
         </div>
       )}
 
-      {canShowPaymentSection && (
+      {canShowPaymentSection && !paymentCompleted && (
         <div className="mt-6 space-y-6">
           <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
             <h2 className="mb-3 text-2xl font-bold text-gray-900">결제 정보</h2>
 
-            {paymentCompleted ? (
-              <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm leading-7 text-green-800">
-                {formatAmount(payment?.amount ?? payment?.payment_amount ?? 0)} 입금이 확인되었습니다. 다음 단계 진행중입니다.
-              </div>
-            ) : paymentRequested ? (
+            {paymentRequested ? (
               <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-7 text-amber-900">
                 입금 확인중입니다.
               </div>
@@ -1239,7 +1020,7 @@ export default function ProgressPage() {
               <div className="rounded-xl bg-gray-50 p-4">
                 <div className="text-sm text-gray-500">결제 상태</div>
                 <div className="mt-1 font-semibold text-gray-900">
-                  {paymentCompleted ? "결제 완료" : paymentRequested ? "입금 확인중" : "결제 대기"}
+                  {paymentRequested ? "입금 확인중" : "결제 대기"}
                 </div>
               </div>
 
@@ -1255,7 +1036,7 @@ export default function ProgressPage() {
                   value={payerName}
                   onChange={(e) => setPayerName(e.target.value)}
                   placeholder="입금자명을 입력해 주세요"
-                  disabled={paymentCompleted || paymentRequested}
+                  disabled={paymentRequested}
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none disabled:bg-gray-100"
                 />
               </div>
@@ -1266,7 +1047,7 @@ export default function ProgressPage() {
               </div>
             </div>
 
-            {!paymentCompleted && !paymentRequested && (
+            {!paymentRequested && (
               <button
                 type="button"
                 onClick={confirmPayment}
@@ -1281,162 +1062,18 @@ export default function ProgressPage() {
       )}
 
       {paymentCompleted && (
-        <div className="mt-6 space-y-6">
-          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-5 text-2xl font-bold text-gray-900">인감도장 이미지 업로드</h2>
-
-            <div className="grid gap-5">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">인감도장 이미지 업로드 *</label>
-                <input
-                  type="file"
-                  accept=".png,.jpg,.jpeg"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    setSealFile(file);
-                  }}
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
-                />
-                <p className="mt-2 text-sm text-gray-500">
-                  위임장 및 출원인코드에 동일하게 사용할 인감도장 이미지를 업로드해 주세요.
-                </p>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">선택된 파일명</label>
-                <input
-                  value={sealFile ? sealFile.name : sealFileName}
-                  readOnly
-                  placeholder="선택된 인감도장 이미지 파일명이 표시됩니다"
-                  className="w-full rounded-xl border border-gray-300 bg-gray-50 px-4 py-3 outline-none"
-                />
-              </div>
-
-              <label className="flex items-start gap-3 rounded-xl bg-gray-50 px-4 py-4 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={sealUsageAgree}
-                  onChange={(e) => setSealUsageAgree(e.target.checked)}
-                  className="mt-1"
-                />
-                <span>업로드한 인감도장을 출원인코드 및 위임장 작성에 동일하게 사용하는 것에 동의합니다.</span>
-              </label>
-
-              {sealFileUrl && (
-                <a
-                  href={sealFileUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-sm font-medium text-blue-600 underline"
-                >
-                  등록된 인감 이미지 보기
-                </a>
-              )}
-
-              <button
-                type="button"
-                onClick={uploadSeal}
-                disabled={sealUploading}
-                className="w-full rounded-2xl bg-black px-6 py-4 text-base font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {sealUploading ? "업로드 중..." : sealUploaded ? "인감 다시 업로드하기" : "인감 업로드하기"}
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
-
-      {paymentCompleted && sealUploaded && (
-        <div className="mt-6 space-y-6">
-          <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-            <h2 className="mb-3 text-2xl font-bold text-gray-900">위임장 확인</h2>
-            <p className="mb-6 text-gray-600">인감 업로드가 완료되었습니다. 위임일자를 확인한 뒤 위임장을 생성하고 내용을 확인해 주세요.</p>
-
-            <div className="grid gap-5">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">위임일자 *</label>
-                <input
-                  type="date"
-                  value={poaDate}
-                  onChange={(e) => setPoaDate(e.target.value)}
-                  className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none focus:border-black"
-                />
-              </div>
-
-              <button
-                type="button"
-                onClick={generatePowerOfAttorney}
-                disabled={poaLoading}
-                className="w-full rounded-2xl bg-black px-6 py-4 text-base font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {poaLoading ? "위임장 생성 중..." : poaGenerated ? "위임장 다시 생성하기" : "위임장 생성하기"}
-              </button>
-            </div>
-          </section>
-
-          {poaPreviewUrl && (
-            <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-              <h3 className="mb-4 text-xl font-bold text-gray-900">위임장 미리보기</h3>
-
-              <div className="mb-4 overflow-hidden rounded-xl border border-gray-200">
-                <iframe src={poaPreviewUrl} title="위임장 미리보기" className="h-[720px] w-full" />
-              </div>
-
-              <a
-                href={poaPreviewUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-sm font-medium text-blue-600 underline"
-              >
-                새 창에서 위임장 보기
-              </a>
-
-              {!poaConfirmed && (
-                <>
-                  <div className="mt-5">
-                    <label className="flex items-start gap-3 rounded-xl bg-gray-50 px-4 py-4 text-sm text-gray-700">
-                      <input
-                        type="checkbox"
-                        checked={poaSealConfirm}
-                        onChange={(e) => setPoaSealConfirm(e.target.checked)}
-                        className="mt-1"
-                      />
-                      <span>본 위임장에 표시된 인감은 본인이 제출한 인감 이미지와 동일함을 확인합니다.</span>
-                    </label>
-                  </div>
-
-                  <div className="mt-5">
-                    <button
-                      type="button"
-                      onClick={confirmPowerOfAttorney}
-                      disabled={poaConfirmLoading || !poaGenerated}
-                      className="w-full rounded-2xl bg-black px-6 py-4 text-base font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {poaConfirmLoading ? "제출 중..." : "위임장 확인 및 제출"}
-                    </button>
-                  </div>
-                </>
-              )}
-            </section>
-          )}
-        </div>
-      )}
-
-      {poaConfirmed && (
         <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-8 shadow-sm">
-          <h2 className="mb-3 text-2xl font-bold text-green-800">위임장 확인이 완료되었습니다</h2>
-          <p className="text-green-800">검토, 결제, 인감 업로드, 위임장 확인이 정상적으로 완료되었습니다.</p>
-
-          {poaPreviewUrl && (
-            <a
-              href={poaPreviewUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-4 inline-block text-sm font-medium text-green-900 underline"
-            >
-              제출한 위임장 다시 보기
-            </a>
-          )}
+          <h2 className="mb-3 text-2xl font-bold text-green-800">접수가 완료되었습니다</h2>
+          <p className="text-green-800">
+            입금 확인이 완료되었습니다. 이후 절차는 내부에서 진행됩니다. 
+            다만, 출원인 코드와 위임장 관련하여 별도 요청드릴 예정입니다. 
+          </p>
+          <div className="mt-4 grid gap-3">
+            <FieldRow label="접수번호" value={pageData?.receipt_no} />
+            <FieldRow label="결제 금액" value={formatAmount(payment?.amount ?? payment?.payment_amount)} />
+            <FieldRow label="예금주명" value={payment?.payer_name || payerName} />
+            <FieldRow label="결제 완료 시각" value={payment?.paid_at} />
+          </div>
         </div>
       )}
     </div>
