@@ -1065,8 +1065,8 @@ export default function ProgressPage() {
         <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-8 shadow-sm">
           <h2 className="mb-3 text-2xl font-bold text-green-800">접수가 완료되었습니다</h2>
           <p className="text-green-800">
-            입금 확인이 완료되었습니다. 이후 절차는 내부에서 진행됩니다. 
-            다만, 출원인 코드와 위임장 관련하여 별도 요청드릴 예정입니다. 
+            입금이 확인되었습니다. 이후 절차는 저희가 진행합니다.
+            출원인 코드와 위임장 관련하여 별도 요청드릴 예정입니다. 
           </p>
           <div className="mt-4 grid gap-3">
             <FieldRow label="접수번호" value={pageData?.receipt_no} />
