@@ -53,6 +53,11 @@ type ReviewInfo = {
   ai_need_manual?: string;
   result_page_type?: string;
   review_sent_at?: string;
+  consultation_message?: string;
+  suggested_mark?: string;
+  suggested_goods?: string;
+  supplement_required?: string;
+};
 };
 
 type PaymentInfo = {
@@ -174,58 +179,29 @@ function getResultPageType(
   );
 }
 
-function shouldShowSupplementStep(params: {
+function getCurrentStepIndex({
+  stage,
+  review,
+  autoReview,
+  paymentCompleted,
+}: {
   stage?: string;
-  resultType?: "LOW_RISK" | "MEDIUM_RISK" | "HIGH_RISK" | "";
-  alreadySubmitted: boolean;
-  reviewCompleted: boolean;
+  review?: ReviewInfo | null;
+  autoReview?: AutoReviewInfo | null;
   paymentCompleted: boolean;
 }) {
-  const { stage, resultType, alreadySubmitted, reviewCompleted, paymentCompleted } = params;
-
-  if (paymentCompleted) return false;
-  if (stage === "NEEDS_SUPPLEMENT") return true;
-
-  if (
-    alreadySubmitted &&
-    !reviewCompleted &&
-    (resultType === "MEDIUM_RISK" || resultType === "HIGH_RISK")
-  ) {
-    return true;
-  }
-
-  return false;
-}
-
-function getCurrentStepIndex(params: {
-  stage?: string;
-  resultType?: "LOW_RISK" | "MEDIUM_RISK" | "HIGH_RISK" | "";
-  alreadySubmitted: boolean;
-  reviewCompleted: boolean;
-  paymentCompleted: boolean;
-}) {
-  const { stage, resultType, alreadySubmitted, reviewCompleted, paymentCompleted } = params;
-
-  if (paymentCompleted || stage === "PAYMENT_COMPLETED" || stage === "FILED") return 4;
+  if (paymentCompleted) return 4;
   if (stage === "PAYMENT_PENDING") return 3;
 
-  if (
-    shouldShowSupplementStep({
-      stage,
-      resultType,
-      alreadySubmitted,
-      reviewCompleted,
-      paymentCompleted,
-    })
-  ) {
-    return 2;
-  }
+  const needSupplement = shouldShowSupplementStep({
+    stage,
+    review,
+    autoReview,
+  });
 
-  if (
-    stage === "WAITING_APPLICANT_INFO" ||
-    stage === "APPLICANT_INFO_SUBMITTED" ||
-    alreadySubmitted
-  ) {
+  if (needSupplement) return 2;
+
+  if (stage === "WAITING_APPLICANT_INFO" || stage === "APPLICANT_INFO_SUBMITTED") {
     return 1;
   }
 
@@ -434,40 +410,41 @@ function ReviewResultSection({
 }
 
 function SupplementSection({
-  resultType,
   review,
-  autoReview,
+  onProceed,
 }: {
-  resultType: "LOW_RISK" | "MEDIUM_RISK" | "HIGH_RISK" | "";
   review?: ReviewInfo | null;
-  autoReview?: AutoReviewInfo | null;
+  onProceed: () => void;
 }) {
-  const primaryMessage =
-    review?.review_message ||
-    review?.trademark_review ||
-    autoReview?.ai_reason ||
-    "표장 구성 또는 지정상품 방향에 대한 보완 검토가 필요합니다.";
-
-  if (resultType !== "MEDIUM_RISK" && resultType !== "HIGH_RISK") return null;
+  if (!review) return null;
 
   return (
-    <section className="rounded-2xl border border-orange-200 bg-orange-50 p-6 shadow-sm">
-      <h2 className="mb-4 text-2xl font-bold text-orange-900">상표 보완 단계</h2>
-      <div className="space-y-3 text-sm leading-7 text-orange-900">
-        <p>
-          현재 단계에서는 그대로 출원하기보다, 상표명 또는 지정상품 구성을 한 번 더 점검하는 것이
-          유리합니다.
-        </p>
-        <div className="rounded-xl bg-white/70 p-4">
-          <div className="mb-1 font-semibold">보완 검토 메모</div>
-          <div>{primaryMessage}</div>
+    <section className="rounded-2xl border border-orange-200 bg-orange-50 p-6">
+      <h2 className="mb-4 text-2xl font-bold text-orange-900">변리사 상담 결과</h2>
+
+      <div className="space-y-4 text-sm text-gray-800">
+        <div>
+          <b>상담 의견</b>
+          <div>{review.consultation_message || "-"}</div>
         </div>
-        <ul className="list-disc pl-5">
-          <li>상표명을 일부 수정하거나 대체안으로 검토할 수 있습니다.</li>
-          <li>지정상품/지정서비스 범위를 조정해 등록 가능성을 높일 수 있습니다.</li>
-          <li>필요한 경우 변리사 검토 의견에 맞춰 재정리 후 결제 단계로 진행합니다.</li>
-        </ul>
+
+        <div>
+          <b>제안 표장</b>
+          <div>{review.suggested_mark || "-"}</div>
+        </div>
+
+        <div>
+          <b>제안 상품</b>
+          <div>{review.suggested_goods || "-"}</div>
+        </div>
       </div>
+
+      <button
+        onClick={onProceed}
+        className="mt-6 w-full rounded-xl bg-black px-5 py-3 text-white font-semibold"
+      >
+        다음 단계 진행
+      </button>
     </section>
   );
 }
@@ -1249,3 +1226,29 @@ export default function ProgressPage() {
     </div>
   );
 }
+
+const handleProceedFromSupplement = async () => {
+  const res = await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify({
+      action: "proceedFromSupplement",
+      token,
+    }),
+  });
+
+  const result = await res.json();
+  if (result.success) {
+    await loadPage(token);
+  } else {
+    setErrorMessage(result.message);
+  }
+};
+
+const isSupplementRequired =
+  String(review?.supplement_required || "").toUpperCase() === "Y";
+
+const canShowPaymentSection =
+  !isSupplementRequired
+    ? reviewCompleted || pageData?.current_stage === "PAYMENT_PENDING"
+    : pageData?.current_stage === "PAYMENT_PENDING";
