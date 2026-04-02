@@ -131,7 +131,7 @@ function getStageLabel(stage?: string) {
     case "LEAD_RECEIVED":
       return "접수 완료";
     case "UNDER_REVIEW":
-      return "AI 검토 진행 중";
+      return "자동 검토 진행 중";
     case "WAITING_APPLICANT_INFO":
       return "출원 정보 입력 요청";
     case "APPLICANT_INFO_SUBMITTED":
@@ -271,7 +271,7 @@ function ReviewHero({
   return (
     <div className="rounded-3xl bg-black px-6 py-8 text-white">
       <div className="mb-3 inline-flex rounded-full bg-white/15 px-3 py-1 text-2xl font-medium">
-        AI 검토 결과: {badgeMap[resultType]}
+        자동 검토 결과: {badgeMap[resultType]}
       </div>
       <h2 className="mb-2 text-2xl font-bold">{trademarkName || "채널명 미입력"}</h2>
       <p className="mb-4 text-sm leading-7 text-gray-200">{titleMap[resultType]}</p>
@@ -299,7 +299,7 @@ function ReviewResultSection({
   if (!resultType) {
     return (
       <section className="rounded-2xl border border-yellow-200 bg-yellow-50 p-6 shadow-sm">
-        <h2 className="mb-3 text-2xl font-bold text-yellow-900">AI 검토 진행 중</h2>
+        <h2 className="mb-3 text-2xl font-bold text-yellow-900">자동 검토 진행 중</h2>
         <p className="text-yellow-900">자동 검토가 진행 중입니다.</p>
       </section>
     );
@@ -645,7 +645,7 @@ export default function ProgressPage() {
     <div className="mx-auto max-w-5xl px-4 py-10">
       <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <h1 className="mb-2 text-3xl font-bold text-gray-900">고객 전용 진행 페이지</h1>
-        <p className="mb-5 text-gray-600">AI 검토 결과를 확인하고 출원인 정보와 상표 정보를 입력해 주세요.</p>
+        <p className="mb-5 text-gray-600">자동 검토 결과를 확인하고 출원인 정보와 상표 정보를 입력해 주세요.</p>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl bg-gray-50 p-4">
