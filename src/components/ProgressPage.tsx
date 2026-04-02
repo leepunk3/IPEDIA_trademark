@@ -214,6 +214,7 @@ function StepBar({ currentStage }: { currentStage?: string }) {
   const steps = [
     { key: "review", label: "검토 결과" },
     { key: "applicant", label: "출원 정보 입력" },
+    { key: "applicant", label: "상표 보완(필요시)" },
     { key: "payment", label: "결제 진행" },
     { key: "done", label: "접수 완료" },
   ];
