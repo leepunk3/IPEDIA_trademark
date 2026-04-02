@@ -5,12 +5,24 @@ import React, { useEffect, useMemo, useState } from "react";
 const API_URL =
   "https://script.google.com/macros/s/AKfycbzrohXQ_UwzeykQNUHBDN5CYr_akoVb5a9fE4ZC2rhhujpHMUT1sBxNS5fjiogQZHln/exec";
 
+type StageType =
+  | "LEAD_RECEIVED"
+  | "UNDER_REVIEW"
+  | "WAITING_APPLICANT_INFO"
+  | "APPLICANT_INFO_SUBMITTED"
+  | "NEEDS_SUPPLEMENT"
+  | "REVIEW_COMPLETED"
+  | "PAYMENT_PENDING"
+  | "PAYMENT_COMPLETED"
+  | "FILED"
+  | string;
+
 type PageData = {
   lead_id: string;
   receipt_no: string;
   channel_name?: string;
   email?: string;
-  current_stage?: string;
+  current_stage?: StageType;
 };
 
 type AutoReviewInfo = {
@@ -136,6 +148,8 @@ function getStageLabel(stage?: string) {
       return "출원 정보 입력 요청";
     case "APPLICANT_INFO_SUBMITTED":
       return "출원 정보 제출 완료";
+    case "NEEDS_SUPPLEMENT":
+      return "상표 보완 필요";
     case "REVIEW_COMPLETED":
       return "검토 결과 안내";
     case "PAYMENT_PENDING":
@@ -149,28 +163,8 @@ function getStageLabel(stage?: string) {
   }
 }
 
-function getCurrentStepIndex(stage?: string) {
-  switch (stage) {
-    case "LEAD_RECEIVED":
-    case "UNDER_REVIEW":
-      return 0;
-    case "WAITING_APPLICANT_INFO":
-      return 1;
-    case "APPLICANT_INFO_SUBMITTED":
-    case "REVIEW_COMPLETED":
-      return 2;
-    case "PAYMENT_PENDING":
-      return 2;
-    case "PAYMENT_COMPLETED":
-    case "FILED":
-      return 3;
-    default:
-      return 0;
-  }
-}
-
 function getResultPageType(
-  autoReview?: AutoReviewInfo,
+  autoReview?: AutoReviewInfo | null,
   review?: ReviewInfo | null
 ): "LOW_RISK" | "MEDIUM_RISK" | "HIGH_RISK" | "" {
   return (
@@ -178,6 +172,64 @@ function getResultPageType(
     (review?.result_page_type as "LOW_RISK" | "MEDIUM_RISK" | "HIGH_RISK" | "") ||
     ""
   );
+}
+
+function shouldShowSupplementStep(params: {
+  stage?: string;
+  resultType?: "LOW_RISK" | "MEDIUM_RISK" | "HIGH_RISK" | "";
+  alreadySubmitted: boolean;
+  reviewCompleted: boolean;
+  paymentCompleted: boolean;
+}) {
+  const { stage, resultType, alreadySubmitted, reviewCompleted, paymentCompleted } = params;
+
+  if (paymentCompleted) return false;
+  if (stage === "NEEDS_SUPPLEMENT") return true;
+
+  if (
+    alreadySubmitted &&
+    !reviewCompleted &&
+    (resultType === "MEDIUM_RISK" || resultType === "HIGH_RISK")
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function getCurrentStepIndex(params: {
+  stage?: string;
+  resultType?: "LOW_RISK" | "MEDIUM_RISK" | "HIGH_RISK" | "";
+  alreadySubmitted: boolean;
+  reviewCompleted: boolean;
+  paymentCompleted: boolean;
+}) {
+  const { stage, resultType, alreadySubmitted, reviewCompleted, paymentCompleted } = params;
+
+  if (paymentCompleted || stage === "PAYMENT_COMPLETED" || stage === "FILED") return 4;
+  if (stage === "PAYMENT_PENDING") return 3;
+
+  if (
+    shouldShowSupplementStep({
+      stage,
+      resultType,
+      alreadySubmitted,
+      reviewCompleted,
+      paymentCompleted,
+    })
+  ) {
+    return 2;
+  }
+
+  if (
+    stage === "WAITING_APPLICANT_INFO" ||
+    stage === "APPLICANT_INFO_SUBMITTED" ||
+    alreadySubmitted
+  ) {
+    return 1;
+  }
+
+  return 0;
 }
 
 function FieldRow({
@@ -210,20 +262,38 @@ function SectionCard({
   );
 }
 
-function StepBar({ currentStage }: { currentStage?: string }) {
+function StepBar({
+  currentStage,
+  resultType,
+  alreadySubmitted,
+  reviewCompleted,
+  paymentCompleted,
+}: {
+  currentStage?: string;
+  resultType?: "LOW_RISK" | "MEDIUM_RISK" | "HIGH_RISK" | "";
+  alreadySubmitted: boolean;
+  reviewCompleted: boolean;
+  paymentCompleted: boolean;
+}) {
   const steps = [
     { key: "review", label: "검토 결과" },
     { key: "applicant", label: "출원 정보 입력" },
-    { key: "applicant", label: "상표 보완(필요시)" },
+    { key: "supplement", label: "상표 보완(필요시)" },
     { key: "payment", label: "결제 진행" },
     { key: "done", label: "접수 완료" },
   ];
 
-  const currentIndex = getCurrentStepIndex(currentStage);
+  const currentIndex = getCurrentStepIndex({
+    stage: currentStage,
+    resultType,
+    alreadySubmitted,
+    reviewCompleted,
+    paymentCompleted,
+  });
 
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
         {steps.map((step, idx) => {
           const active = idx <= currentIndex;
           return (
@@ -263,7 +333,7 @@ function ReviewHero({
   };
 
   const titleMap = {
-    LOW_RISK: "현재 채널명에는 상표 등록이 불가한 사유가 없어보입니다.",
+    LOW_RISK: "현재 채널명에는 상표 등록이 불가한 사유가 없어 보입니다.",
     MEDIUM_RISK: "현재 채널명은 일부 보완 또는 재검토가 필요한 상태입니다.",
     HIGH_RISK: "현재 채널명은 그대로 출원할 경우 거절 가능성이 높은 상태입니다.",
     "": "현재 검토가 진행 중입니다.",
@@ -271,7 +341,7 @@ function ReviewHero({
 
   return (
     <div className="rounded-3xl bg-black px-6 py-8 text-white">
-      <div className="mb-3 inline-flex rounded-full bg-white/15 px-3 py-1 text-2xl font-medium">
+      <div className="mb-3 inline-flex rounded-full bg-white/15 px-3 py-1 text-sm font-medium">
         자동 검토 결과: {badgeMap[resultType]}
       </div>
       <h2 className="mb-2 text-2xl font-bold">{trademarkName || "채널명 미입력"}</h2>
@@ -291,10 +361,10 @@ function ReviewResultSection({
   review,
 }: {
   trademarkName: string;
-  autoReview?: AutoReviewInfo;
+  autoReview?: AutoReviewInfo | null;
   review?: ReviewInfo | null;
 }) {
-  const resultType = getResultPageType(autoReview, review || undefined);
+  const resultType = getResultPageType(autoReview, review);
   const reason = autoReview?.ai_reason || review?.review_message || review?.trademark_review || "";
 
   if (!resultType) {
@@ -311,8 +381,14 @@ function ReviewResultSection({
       <div className="space-y-6">
         <ReviewHero trademarkName={trademarkName} resultType={resultType} reason={reason} />
         <SectionCard title="왜 문제가 되나요">
-          <p>현재 채널명은 상품 또는 서비스의 성질, 용도, 특징을 직접 설명하는 표현으로 인식될 가능성이 있습니다.</p>
-          <p>이 경우 소비자는 이를 브랜드보다는 일반 설명으로 받아들일 수 있어 등록이 제한될 수 있습니다.</p>
+          <p>
+            현재 채널명은 상품 또는 서비스의 성질, 용도, 특징을 직접 설명하는 표현으로 인식될
+            가능성이 있습니다.
+          </p>
+          <p>
+            이 경우 소비자는 이를 브랜드보다는 일반 설명으로 받아들일 수 있어 등록이 제한될 수
+            있습니다.
+          </p>
         </SectionCard>
         <SectionCard title="권장 진행 방식">
           <ul className="list-disc pl-5">
@@ -330,8 +406,14 @@ function ReviewResultSection({
       <div className="space-y-6">
         <ReviewHero trademarkName={trademarkName} resultType={resultType} reason={reason} />
         <SectionCard title="왜 보완 검토가 필요한가요">
-          <p>제출하신 채널명은 일부 표현이 브랜드 이름보다는 설명 문구처럼 인식될 가능성이 있습니다.</p>
-          <p>다만 지정상품 설정, 표현 보완, 출원 방향 조정을 통해 충분히 진행 방향을 잡을 수 있습니다.</p>
+          <p>
+            제출하신 채널명은 일부 표현이 브랜드 이름보다는 설명 문구처럼 인식될 가능성이
+            있습니다.
+          </p>
+          <p>
+            다만 지정상품 설정, 표현 보완, 출원 방향 조정을 통해 충분히 진행 방향을 잡을 수
+            있습니다.
+          </p>
         </SectionCard>
       </div>
     );
@@ -348,6 +430,45 @@ function ReviewResultSection({
         </ul>
       </SectionCard>
     </div>
+  );
+}
+
+function SupplementSection({
+  resultType,
+  review,
+  autoReview,
+}: {
+  resultType: "LOW_RISK" | "MEDIUM_RISK" | "HIGH_RISK" | "";
+  review?: ReviewInfo | null;
+  autoReview?: AutoReviewInfo | null;
+}) {
+  const primaryMessage =
+    review?.review_message ||
+    review?.trademark_review ||
+    autoReview?.ai_reason ||
+    "표장 구성 또는 지정상품 방향에 대한 보완 검토가 필요합니다.";
+
+  if (resultType !== "MEDIUM_RISK" && resultType !== "HIGH_RISK") return null;
+
+  return (
+    <section className="rounded-2xl border border-orange-200 bg-orange-50 p-6 shadow-sm">
+      <h2 className="mb-4 text-2xl font-bold text-orange-900">상표 보완 단계</h2>
+      <div className="space-y-3 text-sm leading-7 text-orange-900">
+        <p>
+          현재 단계에서는 그대로 출원하기보다, 상표명 또는 지정상품 구성을 한 번 더 점검하는 것이
+          유리합니다.
+        </p>
+        <div className="rounded-xl bg-white/70 p-4">
+          <div className="mb-1 font-semibold">보완 검토 메모</div>
+          <div>{primaryMessage}</div>
+        </div>
+        <ul className="list-disc pl-5">
+          <li>상표명을 일부 수정하거나 대체안으로 검토할 수 있습니다.</li>
+          <li>지정상품/지정서비스 범위를 조정해 등록 가능성을 높일 수 있습니다.</li>
+          <li>필요한 경우 변리사 검토 의견에 맞춰 재정리 후 결제 단계로 진행합니다.</li>
+        </ul>
+      </div>
+    </section>
   );
 }
 
@@ -467,18 +588,39 @@ export default function ProgressPage() {
   }, []);
 
   const isRepresentativeVisible = useMemo(() => form.applicant_type === "법인", [form.applicant_type]);
-  const isApplicantCodeInputVisible = useMemo(() => form.applicant_code_status === "있음", [form.applicant_code_status]);
-  const isApplicantCodeRequestVisible = useMemo(() => form.applicant_code_status === "없음", [form.applicant_code_status]);
+  const isApplicantCodeInputVisible = useMemo(
+    () => form.applicant_code_status === "있음",
+    [form.applicant_code_status]
+  );
+  const isApplicantCodeRequestVisible = useMemo(
+    () => form.applicant_code_status === "없음",
+    [form.applicant_code_status]
+  );
 
   const canShowApplicantEdit = !alreadySubmitted || editingApplicant;
   const canShowTrademarkEdit = !alreadySubmitted || editingTrademark;
 
-  const reviewCompleted = !!review?.exists && String(review?.mail_sent || "").toUpperCase() === "Y";
-  const canShowPaymentSection = reviewCompleted;
+  const reviewCompleted =
+    !!review?.exists && String(review?.mail_sent || "").toUpperCase() === "Y";
+
   const paymentCompleted =
     pageData?.current_stage === "PAYMENT_COMPLETED" ||
+    pageData?.current_stage === "FILED" ||
     payment?.payment_status === "PAID";
+
   const paymentRequested = payment?.payment_status === "REQUESTED";
+
+  const resultType = getResultPageType(autoReview, review);
+
+  const needsSupplement = shouldShowSupplementStep({
+    stage: pageData?.current_stage,
+    resultType,
+    alreadySubmitted,
+    reviewCompleted,
+    paymentCompleted,
+  });
+
+  const canShowPaymentSection = reviewCompleted || pageData?.current_stage === "PAYMENT_PENDING";
 
   const updateField = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -562,9 +704,14 @@ export default function ProgressPage() {
       setSubmitMessage(
         result.message || (alreadySubmitted ? "수정 내용이 저장되었습니다." : "출원 정보가 제출되었습니다.")
       );
+
       setNextStepMessage(
         result.next_step_message ||
-          (alreadySubmitted ? "변리사 검토 의견을 대기중입니다." : "")
+          (needsSupplement
+            ? "보완 검토 후 결제 진행 여부를 안내드립니다."
+            : alreadySubmitted
+            ? "변리사 검토 의견을 대기중입니다."
+            : "")
       );
 
       setAlreadySubmitted(true);
@@ -646,7 +793,9 @@ export default function ProgressPage() {
     <div className="mx-auto max-w-5xl px-4 py-10">
       <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <h1 className="mb-2 text-3xl font-bold text-gray-900">고객 전용 진행 페이지</h1>
-        <p className="mb-5 text-gray-600">자동 검토 결과를 확인하고 출원인 정보와 상표 정보를 입력해 주세요.</p>
+        <p className="mb-5 text-gray-600">
+          자동 검토 결과를 확인하고 출원인 정보와 상표 정보를 입력해 주세요.
+        </p>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl bg-gray-50 p-4">
@@ -655,7 +804,9 @@ export default function ProgressPage() {
           </div>
           <div className="rounded-xl bg-gray-50 p-4">
             <div className="text-sm text-gray-500">현재 상태</div>
-            <div className="mt-1 font-semibold text-gray-900">{getStageLabel(pageData?.current_stage)}</div>
+            <div className="mt-1 font-semibold text-gray-900">
+              {getStageLabel(pageData?.current_stage)}
+            </div>
           </div>
           <div className="rounded-xl bg-gray-50 p-4">
             <div className="text-sm text-gray-500">채널명</div>
@@ -669,13 +820,19 @@ export default function ProgressPage() {
       </div>
 
       <div className="mb-6">
-        <StepBar currentStage={pageData?.current_stage} />
+        <StepBar
+          currentStage={pageData?.current_stage}
+          resultType={resultType}
+          alreadySubmitted={alreadySubmitted}
+          reviewCompleted={reviewCompleted}
+          paymentCompleted={paymentCompleted}
+        />
       </div>
 
       <div className="mb-6">
         <ReviewResultSection
           trademarkName={pageData?.channel_name || ""}
-          autoReview={autoReview || undefined}
+          autoReview={autoReview}
           review={review}
         />
       </div>
@@ -713,7 +870,9 @@ export default function ProgressPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">출원인의 국문 이름 또는 법인명 *</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  출원인의 국문 이름 또는 법인명 *
+                </label>
                 <input
                   name="applicant_name"
                   value={form.applicant_name}
@@ -800,7 +959,9 @@ export default function ProgressPage() {
               <FieldRow label="이름 또는 법인명" value={form.applicant_name} />
               <FieldRow label="영문명" value={form.applicant_name_eng} />
               <FieldRow label="주민등록번호" value={form.applicant_resident_number} />
-              {form.applicant_type === "법인" && <FieldRow label="대표자명" value={form.representative_name} />}
+              {form.applicant_type === "법인" && (
+                <FieldRow label="대표자명" value={form.representative_name} />
+              )}
               <FieldRow label="주소" value={form.address} />
               <FieldRow label="전화번호" value={form.phone} />
               <FieldRow label="이메일" value={form.email} />
@@ -945,6 +1106,14 @@ export default function ProgressPage() {
           )}
         </section>
 
+        {needsSupplement && (
+          <SupplementSection
+            resultType={resultType}
+            review={review}
+            autoReview={autoReview}
+          />
+        )}
+
         {errorMessage && (
           <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {errorMessage}
@@ -1067,7 +1236,7 @@ export default function ProgressPage() {
           <h2 className="mb-3 text-2xl font-bold text-green-800">접수가 완료되었습니다</h2>
           <p className="text-green-800">
             입금이 확인되었습니다. 이후 절차는 저희가 진행합니다.
-            출원인 코드와 위임장 관련하여 별도 요청드릴 예정입니다. 
+            출원인 코드와 위임장 관련하여 별도 요청드릴 예정입니다.
           </p>
           <div className="mt-4 grid gap-3">
             <FieldRow label="접수번호" value={pageData?.receipt_no} />
