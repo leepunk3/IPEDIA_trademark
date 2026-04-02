@@ -34,7 +34,7 @@ export default function LandingPage() {
   const [errorMessage, setErrorMessage] = useState("")
 
   const APPS_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbys_NnSDz8R6B4ceYdbScr2utmQ5KZBmXuyqmax7xAybOfcHfbqyRw8yCwbCX3JxW5a/exec"
+  "https://script.google.com/macros/s/AKfycbzrohXQ_UwzeykQNUHBDN5CYr_akoVb5a9fE4ZC2rhhujpHMUT1sBxNS5fjiogQZHln/exec"
 
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
