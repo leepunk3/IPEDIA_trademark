@@ -58,7 +58,6 @@ type ReviewInfo = {
   suggested_goods?: string;
   supplement_required?: string;
 };
-};
 
 type PaymentInfo = {
   exists?: boolean;
