@@ -228,21 +228,9 @@ export const handler: Handler = async (event) => {
     );
 
     const combinedText = `${markText} [SEP] ${goodsServices.join(", ")}`;
-    const embedding = await getEmbedding(combinedText);
-
-    const { data: matches, error } = await supabase.rpc("match_trademark_cases", {
-      query_embedding: embedding,
-      match_count: 5
-    });
-
-    if (error) {
-      throw error;
-    }
-
-    const similarCases = matches || [];
-    const similarHighCount = similarCases.filter(
-      (row: any) => row.decision === "HIGH"
-    ).length;
+    // 임시: embedding 제거
+    let similarCases = [];
+    let similarHighCount = 0;
 
     if (riskLevel === "REVIEW_NEEDED" && similarHighCount >= 3) {
       riskLevel = "HIGH";
