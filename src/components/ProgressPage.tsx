@@ -178,6 +178,24 @@ function getResultPageType(
   );
 }
 
+function shouldShowSupplementStep({
+  stage,
+  review,
+  autoReview,
+}: {
+  stage?: string;
+  review?: ReviewInfo | null;
+  autoReview?: AutoReviewInfo | null;
+}) {
+  const resultType = getResultPageType(autoReview, review);
+  const supplementRequired = String(review?.supplement_required || "").toUpperCase() === "Y";
+  return (
+    stage === "NEEDS_SUPPLEMENT" ||
+    supplementRequired ||
+    resultType === "MEDIUM_RISK"
+  );
+}
+
 function getCurrentStepIndex({
   stage,
   review,
@@ -239,15 +257,13 @@ function SectionCard({
 
 function StepBar({
   currentStage,
-  resultType,
-  alreadySubmitted,
-  reviewCompleted,
+  review,
+  autoReview,
   paymentCompleted,
 }: {
   currentStage?: string;
-  resultType?: "LOW_RISK" | "MEDIUM_RISK" | "HIGH_RISK" | "";
-  alreadySubmitted: boolean;
-  reviewCompleted: boolean;
+  review?: ReviewInfo | null;
+  autoReview?: AutoReviewInfo | null;
   paymentCompleted: boolean;
 }) {
   const steps = [
@@ -260,9 +276,8 @@ function StepBar({
 
   const currentIndex = getCurrentStepIndex({
     stage: currentStage,
-    resultType,
-    alreadySubmitted,
-    reviewCompleted,
+    review,
+    autoReview,
     paymentCompleted,
   });
 
@@ -439,8 +454,9 @@ function SupplementSection({
       </div>
 
       <button
+        type="button"
         onClick={onProceed}
-        className="mt-6 w-full rounded-xl bg-black px-5 py-3 text-white font-semibold"
+        className="mt-6 w-full rounded-xl bg-black px-5 py-3 font-semibold text-white"
       >
         다음 단계 진행
       </button>
@@ -590,13 +606,16 @@ export default function ProgressPage() {
 
   const needsSupplement = shouldShowSupplementStep({
     stage: pageData?.current_stage,
-    resultType,
-    alreadySubmitted,
-    reviewCompleted,
-    paymentCompleted,
+    review,
+    autoReview,
   });
 
-  const canShowPaymentSection = reviewCompleted || pageData?.current_stage === "PAYMENT_PENDING";
+  const isSupplementRequired =
+    String(review?.supplement_required || "").toUpperCase() === "Y";
+
+  const canShowPaymentSection = !isSupplementRequired
+    ? reviewCompleted || pageData?.current_stage === "PAYMENT_PENDING"
+    : pageData?.current_stage === "PAYMENT_PENDING";
 
   const updateField = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
@@ -744,6 +763,28 @@ export default function ProgressPage() {
     }
   };
 
+  const handleProceedFromSupplement = async () => {
+    try {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({
+          action: "proceedFromSupplement",
+          token,
+        }),
+      });
+
+      const result: ApiResponse = await res.json();
+      if (result.success) {
+        await loadPage(token);
+      } else {
+        setErrorMessage(result.message || "다음 단계 진행에 실패했습니다.");
+      }
+    } catch (error) {
+      setErrorMessage("다음 단계 진행 중 오류가 발생했습니다.");
+    }
+  };
+
   if (loading) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-12">
@@ -798,9 +839,8 @@ export default function ProgressPage() {
       <div className="mb-6">
         <StepBar
           currentStage={pageData?.current_stage}
-          resultType={resultType}
-          alreadySubmitted={alreadySubmitted}
-          reviewCompleted={reviewCompleted}
+          review={review}
+          autoReview={autoReview}
           paymentCompleted={paymentCompleted}
         />
       </div>
@@ -1084,9 +1124,8 @@ export default function ProgressPage() {
 
         {needsSupplement && (
           <SupplementSection
-            resultType={resultType}
             review={review}
-            autoReview={autoReview}
+            onProceed={handleProceedFromSupplement}
           />
         )}
 
@@ -1225,29 +1264,3 @@ export default function ProgressPage() {
     </div>
   );
 }
-
-const handleProceedFromSupplement = async () => {
-  const res = await fetch(API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({
-      action: "proceedFromSupplement",
-      token,
-    }),
-  });
-
-  const result = await res.json();
-  if (result.success) {
-    await loadPage(token);
-  } else {
-    setErrorMessage(result.message);
-  }
-};
-
-const isSupplementRequired =
-  String(review?.supplement_required || "").toUpperCase() === "Y";
-
-const canShowPaymentSection =
-  !isSupplementRequired
-    ? reviewCompleted || pageData?.current_stage === "PAYMENT_PENDING"
-    : pageData?.current_stage === "PAYMENT_PENDING";
