@@ -255,8 +255,14 @@ export const handler: Handler = async (event) => {
           only_non_distinctive: onlyNonDistinctive,
           ground_code: groundCode,
           risk_level: riskLevel,
-          reason,
-          similar_cases: similarCases
+          result_page_type:
+            riskLevel === "HIGH"
+              ? "HIGH_RISK"
+              : riskLevel === "REVIEW_NEEDED"
+              ? "MEDIUM_RISK"
+              : "LOW_RISK",
+          need_manual: riskLevel === "LOW" ? "N" : "Y",
+          reason
         }
       })
     };
