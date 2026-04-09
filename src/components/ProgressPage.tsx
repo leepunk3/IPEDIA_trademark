@@ -267,7 +267,7 @@ function StepBar({
   paymentCompleted: boolean;
 }) {
   const steps = [
-    { key: "review", label: "검토 결과" },
+    { key: "review", label: "자동 검토 결과" },
     { key: "applicant", label: "출원 정보 입력" },
     { key: "supplement", label: "상표 보완(필요시)" },
     { key: "payment", label: "결제 진행" },
@@ -331,7 +331,7 @@ function ReviewHero({
 
   return (
     <div className="rounded-3xl bg-black px-6 py-8 text-white">
-      <div className="mb-3 inline-flex rounded-full bg-white/15 px-3 py-1 text-sm font-medium">
+      <div className="mb-3 inline-flex rounded-full bg-white/15 px-3 py-1 text-lg font-medium">
         자동 검토 결과: {badgeMap[resultType]}
       </div>
       <h2 className="mb-2 text-2xl font-bold">{trademarkName || "채널명 미입력"}</h2>
