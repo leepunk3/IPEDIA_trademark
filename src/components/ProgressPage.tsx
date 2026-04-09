@@ -379,6 +379,13 @@ function ReviewResultSection({
             이 경우 소비자는 이를 브랜드보다는 일반 설명으로 받아들일 수 있어 등록이 제한될 수
             있습니다.
           </p>
+          <p>
+            다만 지정상품 설정, 표현 보완, 출원 방향 조정을 통해 충분히 진행 방향을 잡을 수
+            있습니다.
+          </p>
+          <p>
+            아래 정보를 입력하고 변리사 검토 의견을 받아보세요.
+          </p>
         </SectionCard>
         <SectionCard title="권장 진행 방식">
           <ul className="list-disc pl-5">
