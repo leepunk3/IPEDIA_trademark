@@ -370,7 +370,7 @@ function ReviewResultSection({
     return (
       <div className="space-y-6">
         <ReviewHero trademarkName={trademarkName} resultType={resultType} reason={reason} />
-        <SectionCard title="왜 문제가 되나요">
+        <SectionCard title="왜 등록이 어렵나요">
           <p>
             현재 채널명은 상품 또는 서비스의 성질, 용도, 특징을 직접 설명하는 표현으로 인식될
             가능성이 있습니다.
@@ -402,7 +402,7 @@ function ReviewResultSection({
     return (
       <div className="space-y-6">
         <ReviewHero trademarkName={trademarkName} resultType={resultType} reason={reason} />
-        <SectionCard title="왜 보완 검토가 필요한가요">
+        <SectionCard title="왜 등록이 어렵나요">
           <p>
             제출하신 채널명은 일부 표현이 브랜드 이름보다는 설명 문구처럼 인식될 가능성이
             있습니다.
