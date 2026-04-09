@@ -404,6 +404,9 @@ function ReviewResultSection({
             다만 지정상품 설정, 표현 보완, 출원 방향 조정을 통해 충분히 진행 방향을 잡을 수
             있습니다.
           </p>
+          <p>
+            아래 정보를 입력하고 변리사 검토 의견을 받아보세요.
+          </p>
         </SectionCard>
       </div>
     );
@@ -434,11 +437,11 @@ function SupplementSection({
 
   return (
     <section className="rounded-2xl border border-orange-200 bg-orange-50 p-6">
-      <h2 className="mb-4 text-2xl font-bold text-orange-900">변리사 상담 결과</h2>
+      <h2 className="mb-4 text-2xl font-bold text-orange-900">변리사 검토 결과</h2>
 
       <div className="space-y-4 text-sm text-gray-800">
         <div>
-          <b>상담 의견</b>
+          <b>검토 의견</b>
           <div>{review.consultation_message || "-"}</div>
         </div>
 
