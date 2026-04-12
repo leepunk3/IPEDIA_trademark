@@ -830,18 +830,16 @@ export default function ProgressPage() {
             <div className="mt-1 font-semibold text-gray-900">{pageData?.receipt_no || "-"}</div>
           </div>
           <div className="rounded-xl bg-gray-50 p-4">
-            <div className="text-sm text-gray-500">현재 상태</div>
-            <div className="mt-1 font-semibold text-gray-900">
-              {getStageLabel(pageData?.current_stage)}
-            </div>
+            <div className="text-sm text-gray-500">수신 이메일</div>
+            <div className="mt-1 font-semibold text-gray-900">{pageData?.email || "-"}</div>
           </div>
           <div className="rounded-xl bg-gray-50 p-4">
             <div className="text-sm text-gray-500">채널명</div>
             <div className="mt-1 font-semibold text-gray-900">{pageData?.channel_name || "-"}</div>
           </div>
           <div className="rounded-xl bg-gray-50 p-4">
-            <div className="text-sm text-gray-500">이메일</div>
-            <div className="mt-1 font-semibold text-gray-900">{pageData?.email || "-"}</div>
+            <div className="text-sm text-gray-500">상품/서비스 종류</div>
+            <div className="mt-1 font-semibold text-gray-900">{pageData?.goods_services || "-"}</div>
           </div>
         </div>
       </div>
