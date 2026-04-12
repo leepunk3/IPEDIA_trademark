@@ -181,19 +181,14 @@ function getResultPageType(
 function shouldShowSupplementStep({
   stage,
   review,
-  autoReview,
 }: {
   stage?: string;
   review?: ReviewInfo | null;
-  autoReview?: AutoReviewInfo | null;
 }) {
-  const resultType = getResultPageType(autoReview, review);
-  const supplementRequired = String(review?.supplement_required || "").toUpperCase() === "Y";
-  return (
-    stage === "NEEDS_SUPPLEMENT" ||
-    supplementRequired ||
-    resultType === "MEDIUM_RISK"
-  );
+  const supplementRequired =
+    String(review?.supplement_required || "").toUpperCase() === "Y";
+
+  return stage === "NEEDS_SUPPLEMENT" && supplementRequired;
 }
 
 function getCurrentStepIndex({
