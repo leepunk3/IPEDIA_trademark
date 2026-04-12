@@ -330,19 +330,31 @@ function ReviewHero({
   };
 
   return (
-    <div className="rounded-3xl bg-black px-6 py-8 text-white">
-      <div className="mb-3 inline-flex rounded-full bg-white/15 px-3 py-1 text-lg font-medium">
-        자동 검토 결과: {badgeMap[resultType]}
-      </div>
-      <h2 className="mb-2 text-2xl font-bold">{trademarkName || "채널명 미입력"}</h2>
-      <p className="mb-4 text-sm leading-7 text-gray-200">{titleMap[resultType]}</p>
-      {reason && (
-        <div className="rounded-2xl bg-white/10 p-4 text-sm leading-7 text-gray-100">
-          {reason}
-        </div>
-      )}
+  <div className="rounded-3xl bg-black px-6 py-8 text-white">
+    <div className="mb-3 inline-flex rounded-full bg-white/15 px-3 py-1 text-lg font-medium">
+      자동 검토 결과: {badgeMap[resultType]}
     </div>
-  );
+
+    <div className="mb-2">
+      <p className="text-sm font-medium text-yellow-300">
+        채널명: {trademarkName || "채널명 미입력"}
+      </p>
+      <p className="text-sm font-medium text-yellow-300">
+        상품/서비스 종류: {goodsServices || "상품/서비스 종류 미입력"}
+      </p>
+    </div>
+
+    <h2 className="mb-2 text-2xl font-bold">{trademarkName || "채널명 미입력"}</h2>
+
+    <p className="mb-4 text-sm leading-7 text-gray-200">{titleMap[resultType]}</p>
+
+    {reason && (
+      <div className="rounded-2xl bg-white/10 p-4 text-sm leading-7 text-gray-100">
+        {reason}
+      </div>
+    )}
+  </div>
+);
 }
 
 function ReviewResultSection({
