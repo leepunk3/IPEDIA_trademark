@@ -180,21 +180,16 @@ function getResultPageType(
 
 function shouldShowSupplementStep({
   stage,
-  review,
 }: {
   stage?: string;
   review?: ReviewInfo | null;
+  autoReview?: AutoReviewInfo | null;
 }) {
-  const supplementRequired =
-    String(review?.supplement_required || "").toUpperCase() === "Y";
-
-  return stage === "NEEDS_SUPPLEMENT" && supplementRequired;
+  return stage === "NEEDS_SUPPLEMENT";
 }
 
 function getCurrentStepIndex({
   stage,
-  review,
-  autoReview,
   paymentCompleted,
 }: {
   stage?: string;
@@ -203,15 +198,10 @@ function getCurrentStepIndex({
   paymentCompleted: boolean;
 }) {
   if (paymentCompleted) return 4;
+
   if (stage === "PAYMENT_PENDING") return 3;
 
-  const needSupplement = shouldShowSupplementStep({
-    stage,
-    review,
-    autoReview,
-  });
-
-  if (needSupplement) return 2;
+  if (stage === "NEEDS_SUPPLEMENT") return 2;
 
   if (stage === "WAITING_APPLICANT_INFO" || stage === "APPLICANT_INFO_SUBMITTED") {
     return 1;
