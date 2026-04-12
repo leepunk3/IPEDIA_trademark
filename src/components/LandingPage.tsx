@@ -24,7 +24,8 @@ import negowangMain from '../assets/images/네고왕_대표.png';
 
 export default function LandingPage() {
 
-    const [channelInput, setChannelInput] = useState("")
+  const [channelInput, setChannelInput] = useState("")
+  const [goodsServices, setGoodsServices] = useState("");
   const [interestType, setInterestType] = useState("")
   const [email, setEmail] = useState("")
   const [privacyAgree, setPrivacyAgree] = useState(false)
@@ -81,6 +82,7 @@ const res = await fetch(APPS_SCRIPT_URL, {
       },
       body: JSON.stringify({
         channel_input: channelInput,
+        goods_services: goodsServices,
         email: email,
         interest_type: interestType,
         privacy_agree: privacyAgree ? "Y" : "N",
@@ -102,6 +104,7 @@ const res = await fetch(APPS_SCRIPT_URL, {
 
     // 입력값 초기화
     setChannelInput("");
+    setgoodsServices("");
     setInterestType("");
     setEmail("");
     setPrivacyAgree(false);
@@ -644,23 +647,61 @@ const res = await fetch(APPS_SCRIPT_URL, {
               </div>
             </div>
           </div>
-          
           <div className="lg:w-7/12 p-8 md:p-12">
-            <h4 className="text-2xl md:text-4xl font-black text-primary mb-6 md:mb-8 tracking-tighter">무료 검토 신청</h4>
-            
+            <h4 className="text-2xl md:text-4xl font-black text-primary mb-6 md:mb-8 tracking-tighter">
+              무료 검토 신청
+            </h4>
+          
             <form className="space-y-4 md:space-y-5" onSubmit={handleSubmit}>
+              
+              {/* 채널명 */}
               <div className="space-y-2 md:space-y-3">
-               <label className="block text-base md:text-xl font-bold text-primary">채널명 (또는 원하는 상표명)
-               </label>
-              <input
-                 type="text"
-                 name="channel_input"
-                 value={channelInput}
-                 onChange={(e) => setChannelInput(e.target.value)}
-                 className="w-full bg-bg-light border border-border-light px-5 py-3 md:py-4 text-base md:text-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all rounded-xl md:rounded-2xl font-medium"
-                 placeholder="예: OO 티비"
-               />
+                <label className="block text-base md:text-xl font-bold text-primary">
+                  채널명 (또는 원하는 상표명)
+                </label>
+                <input
+                  type="text"
+                  name="channel_input"
+                  value={channelInput}
+                  onChange={(e) => setChannelInput(e.target.value)}
+                  className="w-full bg-bg-light border border-border-light px-5 py-3 md:py-4 text-base md:text-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all rounded-xl md:rounded-2xl font-medium"
+                  placeholder="예: OO 티비"
+                />
               </div>
+          
+              {/* 상품/서비스 종류 */}
+              <div className="space-y-2 md:space-y-3">
+                <label className="block text-base md:text-xl font-bold text-primary">
+                  상품/서비스 종류
+                </label>
+              
+                <select
+                  name="goods_services"
+                  value={goodsServices}
+                  onChange={(e) => setGoodsServices(e.target.value)}
+                  className="w-full bg-bg-light border border-border-light px-5 py-3 md:py-4 text-base md:text-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all rounded-xl md:rounded-2xl font-medium"
+                >
+                  <option value="">선택해주세요</option>
+                  <option value="유튜브 콘텐츠">유튜브 / 콘텐츠</option>
+                  <option value="의류 판매">의류 / 쇼핑몰</option>
+                  <option value="화장품">화장품</option>
+                  <option value="IT 서비스">IT / SaaS</option>
+                  <option value="식품">식품</option>
+                  <option value="기타">기타</option>
+                </select>
+              
+                {/* 👇 여기다 넣는거다 */}
+                {goodsServices === "기타" && (
+                  <input
+                    type="text"
+                    placeholder="상품/서비스를 직접 입력해주세요"
+                    onChange={(e) => setGoodsServices(e.target.value)}
+                    className="w-full mt-2 bg-bg-light border border-border-light px-5 py-3 md:py-4 text-base md:text-xl rounded-xl md:rounded-2xl"
+                  />
+                )}
+              </div>          
+            </form>
+          </div>
               <div className="space-y-2 md:space-y-3">
                 <label className="block text-base md:text-xl font-bold text-primary">관심 서비스 유형
                   </label>
