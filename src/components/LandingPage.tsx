@@ -26,6 +26,7 @@ export default function LandingPage() {
 
   const [channelInput, setChannelInput] = useState("")
   const [goodsServices, setGoodsServices] = useState("");
+  const [customGoods, setCustomGoods] = useState("");
   const [interestType, setInterestType] = useState("")
   const [email, setEmail] = useState("")
   const [privacyAgree, setPrivacyAgree] = useState(false)
@@ -688,9 +689,7 @@ const res = await fetch(APPS_SCRIPT_URL, {
                   <option value="IT 서비스">IT / SaaS</option>
                   <option value="식품">식품</option>
                   <option value="기타">기타</option>
-                </select>
-              
-                {/* 👇 여기다 넣는거다 */}
+                </select>              
                 {goodsServices === "기타" && (
                   <input
                     type="text"
