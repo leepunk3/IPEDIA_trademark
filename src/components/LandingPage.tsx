@@ -24,16 +24,15 @@ import negowangMain from '../assets/images/네고왕_대표.png';
 
 export default function LandingPage() {
 
-  const [channelInput, setChannelInput] = useState("")
+  const [channelInput, setChannelInput] = useState("");
   const [goodsServices, setGoodsServices] = useState("");
   const [customGoods, setCustomGoods] = useState("");
-  const [interestType, setInterestType] = useState("")
-  const [email, setEmail] = useState("")
-  const [privacyAgree, setPrivacyAgree] = useState(false)
-
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [successMessage, setSuccessMessage] = useState("")
-  const [errorMessage, setErrorMessage] = useState("")
+  const [interestType, setInterestType] = useState("");
+  const [email, setEmail] = useState("");
+  const [privacyAgree, setPrivacyAgree] = useState(false); 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   const APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbzrohXQ_UwzeykQNUHBDN5CYr_akoVb5a9fE4ZC2rhhujpHMUT1sBxNS5fjiogQZHln/exec"
@@ -47,9 +46,17 @@ const handleSubmit = async (e: React.FormEvent) => {
   setErrorMessage("");
   setSuccessMessage("");
 
-  // 🔹 기본 검증
+  const finalGoodsServices =
+    goodsServices === "기타" ? customGoods.trim() : goodsServices.trim();
+
   if (!channelInput.trim()) {
     setErrorMessage("채널명(또는 상표명)을 입력해 주세요.");
+    setIsSubmitting(false);
+    return;
+  }
+
+  if (!finalGoodsServices) {
+    setErrorMessage("상품/서비스 종류를 입력해 주세요.");
     setIsSubmitting(false);
     return;
   }
@@ -73,17 +80,16 @@ const handleSubmit = async (e: React.FormEvent) => {
   }
 
   try {
-console.log("about to fetch:", APPS_SCRIPT_URL);
+    console.log("about to fetch:", APPS_SCRIPT_URL);
 
-const res = await fetch(APPS_SCRIPT_URL, {
-
+    const res = await fetch(APPS_SCRIPT_URL, {
       method: "POST",
       headers: {
         "Content-Type": "text/plain;charset=utf-8",
       },
       body: JSON.stringify({
         channel_input: channelInput,
-        goods_services: goodsServices,
+        goods_services: finalGoodsServices,
         email: email,
         interest_type: interestType,
         privacy_agree: privacyAgree ? "Y" : "N",
@@ -100,16 +106,14 @@ const res = await fetch(APPS_SCRIPT_URL, {
       return;
     }
 
-    // ✅ 성공 처리
     setSuccessMessage("무료 검토 신청이 정상적으로 접수되었습니다.");
 
-    // 입력값 초기화
     setChannelInput("");
-    setgoodsServices("");
+    setGoodsServices("");
+    setCustomGoods("");
     setInterestType("");
     setEmail("");
     setPrivacyAgree(false);
-
   } catch (error: any) {
     console.error("fetch error:", error);
     setErrorMessage("서버 연결 중 오류가 발생했습니다.");
@@ -654,8 +658,6 @@ const res = await fetch(APPS_SCRIPT_URL, {
             </h4>
           
             <form className="space-y-4 md:space-y-5" onSubmit={handleSubmit}>
-              
-              {/* 채널명 */}
               <div className="space-y-2 md:space-y-3">
                 <label className="block text-base md:text-xl font-bold text-primary">
                   채널명 (또는 원하는 상표명)
@@ -670,16 +672,20 @@ const res = await fetch(APPS_SCRIPT_URL, {
                 />
               </div>
           
-              {/* 상품/서비스 종류 */}
               <div className="space-y-2 md:space-y-3">
                 <label className="block text-base md:text-xl font-bold text-primary">
                   상품/서비스 종류
                 </label>
-              
+          
                 <select
                   name="goods_services"
                   value={goodsServices}
-                  onChange={(e) => setGoodsServices(e.target.value)}
+                  onChange={(e) => {
+                    setGoodsServices(e.target.value);
+                    if (e.target.value !== "기타") {
+                      setCustomGoods("");
+                    }
+                  }}
                   className="w-full bg-bg-light border border-border-light px-5 py-3 md:py-4 text-base md:text-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all rounded-xl md:rounded-2xl font-medium"
                 >
                   <option value="">선택해주세요</option>
@@ -689,58 +695,64 @@ const res = await fetch(APPS_SCRIPT_URL, {
                   <option value="IT 서비스">IT / SaaS</option>
                   <option value="식품">식품</option>
                   <option value="기타">기타</option>
-                </select>              
+                </select>
+          
                 {goodsServices === "기타" && (
                   <input
                     type="text"
+                    name="custom_goods_services"
+                    value={customGoods}
+                    onChange={(e) => setCustomGoods(e.target.value)}
                     placeholder="상품/서비스를 직접 입력해주세요"
-                    onChange={(e) => setGoodsServices(e.target.value)}
-                    className="w-full mt-2 bg-bg-light border border-border-light px-5 py-3 md:py-4 text-base md:text-xl rounded-xl md:rounded-2xl"
+                    className="w-full mt-2 bg-bg-light border border-border-light px-5 py-3 md:py-4 text-base md:text-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all rounded-xl md:rounded-2xl font-medium"
                   />
                 )}
-              </div>          
-            </form>
-          </div>
-              <div className="space-y-2 md:space-y-3">
-                <label className="block text-base md:text-xl font-bold text-primary">관심 서비스 유형
-                  </label>
-                    <div className="relative">
-                        <select
-                          name="interest_type"
-                          value={interestType}
-                          onChange={(e) => setInterestType(e.target.value)}
-                          className="w-full bg-bg-light border border-border-light px-5 py-3 md:py-4 text-base md:text-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all appearance-none text-secondary rounded-xl md:rounded-2xl font-medium"
-                        >
-                          <option value="">선택해주세요</option>
-                          <option value="상표">상표</option>
-                          <option value="디자인">디자인</option>
-                          <option value="상표+디자인">상표+디자인</option>
-                        </select>
-                        <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-muted">
-                         <ArrowRight className="w-5 h-5 md:w-6 md:h-6 rotate-90" />
-                        </div>
-                       </div>
               </div>
+          
               <div className="space-y-2 md:space-y-3">
-                <label className="block text-base md:text-xl font-bold text-primary">연락받을 이메일
+                <label className="block text-base md:text-xl font-bold text-primary">
+                  관심 서비스 유형
+                </label>
+                <div className="relative">
+                  <select
+                    name="interest_type"
+                    value={interestType}
+                    onChange={(e) => setInterestType(e.target.value)}
+                    className="w-full bg-bg-light border border-border-light px-5 py-3 md:py-4 text-base md:text-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all appearance-none text-secondary rounded-xl md:rounded-2xl font-medium"
+                  >
+                    <option value="">선택해주세요</option>
+                    <option value="상표">상표</option>
+                    <option value="디자인">디자인</option>
+                    <option value="상표+디자인">상표+디자인</option>
+                  </select>
+                  <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-muted">
+                    <ArrowRight className="w-5 h-5 md:w-6 md:h-6 rotate-90" />
+                  </div>
+                </div>
+              </div>
+          
+              <div className="space-y-2 md:space-y-3">
+                <label className="block text-base md:text-xl font-bold text-primary">
+                  연락받을 이메일
                 </label>
                 <input
-                    type="email"
-                    name="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-bg-light border border-border-light px-5 py-3 md:py-4 text-base md:text-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all rounded-xl md:rounded-2xl font-medium"
-                    placeholder="example@email.com"
+                  type="email"
+                  name="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-bg-light border border-border-light px-5 py-3 md:py-4 text-base md:text-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all rounded-xl md:rounded-2xl font-medium"
+                  placeholder="example@email.com"
                 />
               </div>
+          
               <div className="flex items-center gap-3 py-2">
                 <input
-                    type="checkbox"
-                    id="privacy_agree"
-                    name="privacy_agree"
-                    checked={privacyAgree}
-                    onChange={(e) => setPrivacyAgree(e.target.checked)}
-                    className="w-5 h-5 md:w-6 md:h-6 rounded border-border-light text-accent focus:ring-accent accent-accent cursor-pointer"
+                  type="checkbox"
+                  id="privacy_agree"
+                  name="privacy_agree"
+                  checked={privacyAgree}
+                  onChange={(e) => setPrivacyAgree(e.target.checked)}
+                  className="w-5 h-5 md:w-6 md:h-6 rounded border-border-light text-accent focus:ring-accent accent-accent cursor-pointer"
                 />
                 <label
                   htmlFor="privacy_agree"
@@ -749,17 +761,19 @@ const res = await fetch(APPS_SCRIPT_URL, {
                   개인정보 수집·이용에 동의합니다.
                 </label>
               </div>
+          
               {errorMessage && (
                 <p className="text-sm md:text-lg text-red-600 font-bold">
                   {errorMessage}
                 </p>
-              )}  
-              
+              )}
+          
               {successMessage && (
                 <p className="text-sm md:text-lg text-green-600 font-bold">
                   {successMessage}
                 </p>
               )}
+          
               <button
                 type="submit"
                 disabled={isSubmitting}
@@ -767,15 +781,14 @@ const res = await fetch(APPS_SCRIPT_URL, {
               >
                 {isSubmitting ? "접수 중..." : "무료 검토 신청하기"}
               </button>
-              
+          
               <p className="text-sm md:text-lg text-secondary/50 text-center mt-6 font-medium">
-                신청하시면 검토 결과를 안내드립니다.<br className="md:hidden"/> (24시간 이내/최대 2일)
+                신청하시면 검토 결과를 안내드립니다.
+                <br className="md:hidden" />
+                (24시간 이내/최대 2일)
               </p>
             </form>
           </div>
-        </div>
-      </section>
-
       {/* Footer */}
     <footer className="bg-[#0f1738] text-[#C8CCD6] py-6 border-t border-white/5">
       <div className="max-w-7xl mx-auto px-4 md:px-12">
