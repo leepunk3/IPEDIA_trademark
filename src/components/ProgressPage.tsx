@@ -1149,7 +1149,7 @@ export default function ProgressPage() {
               onClick={handleProceedFromSupplement}
               className="w-full rounded-xl bg-black px-5 py-3 font-semibold text-white"
             >
-              다음 단계 진행
+              출원 정보 제출하기
             </button>
           </div>
         )}
