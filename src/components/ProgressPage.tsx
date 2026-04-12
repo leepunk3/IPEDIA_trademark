@@ -1143,12 +1143,16 @@ export default function ProgressPage() {
         </section>
 
         {needsSupplement && (
-          <SupplementSection
-            review={review}
-            onProceed={handleProceedFromSupplement}
-          />
+          <div className="mt-6">
+            <button
+              type="button"
+              onClick={handleProceedFromSupplement}
+              className="w-full rounded-xl bg-black px-5 py-3 font-semibold text-white"
+            >
+              다음 단계 진행
+            </button>
+          </div>
         )}
-
         {errorMessage && (
           <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {errorMessage}
