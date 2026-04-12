@@ -620,18 +620,22 @@ const handleSubmit = async (e: React.FormEvent) => {
           </div>
         </div>
       </section>
-
       {/* Section 10: Process & Application Form */}
       <section className="py-4 md:py-8 px-4 sm:px-6 lg:px-8 bg-bg-light">
         <div className="max-w-7xl mx-auto bg-white shadow-2xl border border-border-light flex flex-col lg:flex-row rounded-[2rem] md:rounded-[3rem] overflow-hidden">
           <div className="lg:w-5/12 bg-primary text-white p-6 md:p-12 flex flex-col justify-center relative">
             <div className="absolute inset-0 opacity-10 bg-[url('https://picsum.photos/seed/pattern/800/800')] bg-cover mix-blend-overlay"></div>
             <div className="relative z-10">
-              <h3 className="text-xl sm:text-2xl md:text-4xl font-black mb-6 md:mb-10 tracking-tighter" style={{ color: 'white' }}>진행 절차</h3>
+              <h3
+                className="text-xl sm:text-2xl md:text-4xl font-black mb-6 md:mb-10 tracking-tighter"
+                style={{ color: "white" }}
+              >
+                진행 절차
+              </h3>
+
               <div className="space-y-5 md:space-y-8 relative">
-                {/* Vertical Line */}
                 <div className="absolute left-4 md:left-6 top-2 bottom-2 w-0.5 bg-accent/30"></div>
-                
+
                 {[
                   { step: "STEP 1", title: "채널명 입력" },
                   { step: "STEP 2", title: "자동 검토 리포트" },
@@ -644,19 +648,24 @@ const handleSubmit = async (e: React.FormEvent) => {
                       <span className="text-white text-xs md:text-lg font-black">{idx + 1}</span>
                     </div>
                     <div className="flex flex-col">
-                      <span className="text-accent text-[10px] md:text-sm font-black tracking-widest mb-0.5 md:mb-1 opacity-80">{item.step}</span>
-                      <span className="text-white text-base sm:text-lg md:text-2xl font-bold">{item.title}</span>
+                      <span className="text-accent text-[10px] md:text-sm font-black tracking-widest mb-0.5 md:mb-1 opacity-80">
+                        {item.step}
+                      </span>
+                      <span className="text-white text-base sm:text-lg md:text-2xl font-bold">
+                        {item.title}
+                      </span>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
           </div>
+
           <div className="lg:w-7/12 p-8 md:p-12">
             <h4 className="text-2xl md:text-4xl font-black text-primary mb-6 md:mb-8 tracking-tighter">
               무료 검토 신청
             </h4>
-          
+
             <form className="space-y-4 md:space-y-5" onSubmit={handleSubmit}>
               <div className="space-y-2 md:space-y-3">
                 <label className="block text-base md:text-xl font-bold text-primary">
@@ -671,12 +680,12 @@ const handleSubmit = async (e: React.FormEvent) => {
                   placeholder="예: OO 티비"
                 />
               </div>
-          
+
               <div className="space-y-2 md:space-y-3">
                 <label className="block text-base md:text-xl font-bold text-primary">
                   상품/서비스 종류
                 </label>
-          
+
                 <select
                   name="goods_services"
                   value={goodsServices}
@@ -696,7 +705,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                   <option value="식품">식품</option>
                   <option value="기타">기타</option>
                 </select>
-          
+
                 {goodsServices === "기타" && (
                   <input
                     type="text"
@@ -708,7 +717,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                   />
                 )}
               </div>
-          
+
               <div className="space-y-2 md:space-y-3">
                 <label className="block text-base md:text-xl font-bold text-primary">
                   관심 서비스 유형
@@ -730,7 +739,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                   </div>
                 </div>
               </div>
-          
+
               <div className="space-y-2 md:space-y-3">
                 <label className="block text-base md:text-xl font-bold text-primary">
                   연락받을 이메일
@@ -744,7 +753,7 @@ const handleSubmit = async (e: React.FormEvent) => {
                   placeholder="example@email.com"
                 />
               </div>
-          
+
               <div className="flex items-center gap-3 py-2">
                 <input
                   type="checkbox"
@@ -761,19 +770,19 @@ const handleSubmit = async (e: React.FormEvent) => {
                   개인정보 수집·이용에 동의합니다.
                 </label>
               </div>
-          
+
               {errorMessage && (
                 <p className="text-sm md:text-lg text-red-600 font-bold">
                   {errorMessage}
                 </p>
               )}
-          
+
               {successMessage && (
                 <p className="text-sm md:text-lg text-green-600 font-bold">
                   {successMessage}
                 </p>
               )}
-          
+
               <button
                 type="submit"
                 disabled={isSubmitting}
@@ -781,7 +790,7 @@ const handleSubmit = async (e: React.FormEvent) => {
               >
                 {isSubmitting ? "접수 중..." : "무료 검토 신청하기"}
               </button>
-          
+
               <p className="text-sm md:text-lg text-secondary/50 text-center mt-6 font-medium">
                 신청하시면 검토 결과를 안내드립니다.
                 <br className="md:hidden" />
@@ -789,6 +798,8 @@ const handleSubmit = async (e: React.FormEvent) => {
               </p>
             </form>
           </div>
+        </div>
+      </section>
       {/* Footer */}
     <footer className="bg-[#0f1738] text-[#C8CCD6] py-6 border-t border-white/5">
       <div className="max-w-7xl mx-auto px-4 md:px-12">
