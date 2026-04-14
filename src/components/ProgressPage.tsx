@@ -21,6 +21,7 @@ type PageData = {
   lead_id: string;
   receipt_no: string;
   channel_name?: string;
+  goods_services?: string;
   email?: string;
   current_stage?: StageType;
 };
@@ -293,10 +294,12 @@ function StepBar({
 
 function ReviewHero({
   trademarkName,
+  goodsServices,
   resultType,
   reason,
 }: {
   trademarkName: string;
+  goodsServices?: string;
   resultType: "LOW_RISK" | "MEDIUM_RISK" | "HIGH_RISK" | "";
   reason?: string;
 }) {
@@ -344,10 +347,12 @@ function ReviewHero({
 
 function ReviewResultSection({
   trademarkName,
+  goodsServices,
   autoReview,
   review,
 }: {
   trademarkName: string;
+  goodsServices?: string;
   autoReview?: AutoReviewInfo | null;
   review?: ReviewInfo | null;
 }) {
@@ -366,7 +371,12 @@ function ReviewResultSection({
   if (resultType === "HIGH_RISK") {
     return (
       <div className="space-y-6">
-        <ReviewHero trademarkName={trademarkName} resultType={resultType} reason={reason} />
+        <<ReviewHero
+          trademarkName={trademarkName}
+          goodsServices={goodsServices}
+          resultType={resultType}
+          reason={reason}
+        />
         <SectionCard title="왜 등록이 어렵나요">
           <p>
             현재 채널명은 상품 또는 서비스의 성질, 용도, 특징을 직접 설명하는 표현으로 인식될
@@ -853,9 +863,10 @@ export default function ProgressPage() {
       <div className="mb-6">
         <ReviewResultSection
           trademarkName={pageData?.channel_name || ""}
+          goodsServices={form.goods_services || pageData?.goods_services || ""}
           autoReview={autoReview}
           review={review}
-        />
+        />       
       </div>
 
       <form onSubmit={handleApplicantSubmit} className="space-y-6">
