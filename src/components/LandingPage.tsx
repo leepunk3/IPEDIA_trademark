@@ -792,9 +792,9 @@ const handleSubmit = async (e: React.FormEvent) => {
               </button>
 
               <p className="text-sm md:text-lg text-secondary/50 text-center mt-6 font-medium">
-                신청하시면 검토 결과를 이메일로 안내드립니다.
+                검토 결과를 이메일로 안내드립니다.
                 <br className="md:hidden" />
-                (자동 검토 의견 10분 내/변리사 검토 신청시 24시간 이내)
+                (검토 의견은 10분 내로 보내드립니다)
               </p>
             </form>
           </div>
