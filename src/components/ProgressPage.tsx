@@ -371,7 +371,7 @@ function ReviewResultSection({
   if (resultType === "HIGH_RISK") {
     return (
       <div className="space-y-6">
-        <<ReviewHero
+        <ReviewHero
           trademarkName={trademarkName}
           goodsServices={goodsServices}
           resultType={resultType}
