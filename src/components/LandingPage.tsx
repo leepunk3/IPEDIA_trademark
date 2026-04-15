@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { 
-  ShieldCheck, 
+import {
+  ShieldCheck,
   Shield,
-  Copyright, 
-  PenTool, 
-  TrendingUp, 
-  Youtube, 
-  AlertCircle, 
-  CheckCircle2, 
+  Copyright,
+  PenTool,
+  TrendingUp,
+  Youtube,
+  AlertCircle,
+  CheckCircle2,
   ArrowRight,
   MessageSquare,
   Package,
@@ -23,106 +23,107 @@ import isidolMain from '../assets/images/이셰게 아이돌_대표.png';
 import negowangMain from '../assets/images/네고왕_대표.png';
 
 export default function LandingPage() {
-
   const [channelInput, setChannelInput] = useState("");
   const [goodsServices, setGoodsServices] = useState("");
   const [customGoods, setCustomGoods] = useState("");
   const [interestType, setInterestType] = useState("");
   const [email, setEmail] = useState("");
-  const [privacyAgree, setPrivacyAgree] = useState(false); 
+  const [privacyAgree, setPrivacyAgree] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
   const APPS_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbzrohXQ_UwzeykQNUHBDN5CYr_akoVb5a9fE4ZC2rhhujpHMUT1sBxNS5fjiogQZHln/exec"
+    "https://script.google.com/macros/s/AKfycbzrohXQ_UwzeykQNUHBDN5CYr_akoVb5a9fE4ZC2rhhujpHMUT1sBxNS5fjiogQZHln/exec";
 
-const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  console.log("handleSubmit start");
+    console.log("handleSubmit start");
 
-  setIsSubmitting(true);
-  setErrorMessage("");
-  setSuccessMessage("");
+    setIsSubmitting(true);
+    setErrorMessage("");
+    setSuccessMessage("");
 
-  const finalGoodsServices =
-    goodsServices === "기타" ? customGoods.trim() : goodsServices.trim();
+    const finalGoodsServices =
+      goodsServices === "기타" ? customGoods.trim() : goodsServices.trim();
 
-  if (!channelInput.trim()) {
-    setErrorMessage("채널명(또는 상표명)을 입력해 주세요.");
-    setIsSubmitting(false);
-    return;
-  }
-
-  if (!finalGoodsServices) {
-    setErrorMessage("상품/서비스 종류를 입력해 주세요.");
-    setIsSubmitting(false);
-    return;
-  }
-
-  if (!interestType.trim()) {
-    setErrorMessage("관심 서비스 유형을 선택해 주세요.");
-    setIsSubmitting(false);
-    return;
-  }
-
-  if (!email.trim()) {
-    setErrorMessage("이메일을 입력해 주세요.");
-    setIsSubmitting(false);
-    return;
-  }
-
-  if (!privacyAgree) {
-    setErrorMessage("개인정보 수집·이용에 동의해 주세요.");
-    setIsSubmitting(false);
-    return;
-  }
-
-  try {
-    console.log("about to fetch:", APPS_SCRIPT_URL);
-
-    const res = await fetch(APPS_SCRIPT_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "text/plain;charset=utf-8",
-      },
-      body: JSON.stringify({
-        channel_input: form.channel_input,
-        goods_services: form.goods_services,
-        email: form.email,
-        interest_type: form.interest_type,
-        privacy_agree: form.privacy_agree,
-        privacy_agree: privacyAgree ? "Y" : "N",
-      }),
-    });
-
-    console.log("response status:", res.status);
-
-    const result = await res.json();
-    console.log("response data:", result);
-
-    if (!result.success) {
-      setErrorMessage(result.message || "전송 중 오류가 발생했습니다.");
+    if (!channelInput.trim()) {
+      setErrorMessage("채널명(또는 상표명)을 입력해 주세요.");
+      setIsSubmitting(false);
       return;
     }
 
-    setSuccessMessage("무료 검토 신청이 정상적으로 접수되었습니다.");
+    if (!finalGoodsServices) {
+      setErrorMessage("상품/서비스 종류를 입력해 주세요.");
+      setIsSubmitting(false);
+      return;
+    }
 
-    setChannelInput("");
-    setGoodsServices("");
-    setCustomGoods("");
-    setInterestType("");
-    setEmail("");
-    setPrivacyAgree(false);
-  } catch (error: any) {
-    console.error("fetch error:", error);
-    setErrorMessage("서버 연결 중 오류가 발생했습니다.");
-  } finally {
-    setIsSubmitting(false);
-  }
-};
-  
+    if (!interestType.trim()) {
+      setErrorMessage("관심 서비스 유형을 선택해 주세요.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!email.trim()) {
+      setErrorMessage("이메일을 입력해 주세요.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!privacyAgree) {
+      setErrorMessage("개인정보 수집·이용에 동의해 주세요.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      const payload = {
+        channel_input: channelInput.trim(),
+        goods_services: finalGoodsServices,
+        email: email.trim(),
+        interest_type: interestType.trim(),
+        privacy_agree: privacyAgree ? "Y" : "N",
+      };
+
+      console.log("about to fetch:", APPS_SCRIPT_URL);
+      console.log("submit payload", payload);
+
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      console.log("response status:", res.status);
+
+      const result = await res.json();
+      console.log("response data:", result);
+
+      if (!result.ok) {
+        setErrorMessage(result.error || "전송 중 오류가 발생했습니다.");
+        return;
+      }
+
+      setSuccessMessage("무료 검토 신청이 정상적으로 접수되었습니다.");
+
+      setChannelInput("");
+      setGoodsServices("");
+      setCustomGoods("");
+      setInterestType("");
+      setEmail("");
+      setPrivacyAgree(false);
+    } catch (error: any) {
+      console.error("fetch error:", error);
+      setErrorMessage("서버 연결 중 오류가 발생했습니다.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col w-full bg-white font-sans text-secondary">
       {/* Hero Section */}
@@ -131,28 +132,31 @@ const handleSubmit = async (e: React.FormEvent) => {
           <div className="bg-primary text-white rounded-[2rem] md:rounded-[4rem] p-8 md:p-16 shadow-2xl text-center relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 md:w-96 md:h-96 bg-white opacity-5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
             <div className="absolute bottom-0 left-0 w-48 h-48 md:w-80 md:h-80 bg-accent opacity-10 rounded-full -ml-24 -mb-24 blur-3xl"></div>
-            
+
             <div className="relative z-10">
               <p className="text-xl sm:text-2xl md:text-4xl lg:text-5xl font-black mb-6 md:mb-10 leading-tight tracking-tighter">
-                유튜브 채널이 성장하면<br/>
+                유튜브 채널이 성장하면
+                <br />
                 <span className="text-accent">브랜드</span>가 됩니다.
               </p>
               <p className="text-2xl sm:text-3xl md:text-6xl lg:text-7xl font-black leading-tight tracking-tighter mb-8 md:mb-12">
-                소중하게 키운 내 채널,<br/>
+                소중하게 키운 내 채널,
+                <br />
                 <span className="text-accent">상표</span>와 <span className="text-accent">디자인</span>으로 보호하세요.
               </p>
             </div>
           </div>
         </div>
       </section>
+
       {/* Section 1.0 */}
       <section className="py-8 md:py-12 px-4 sm:px-6 lg:px-8 bg-white border-t border-border-light">
         <div className="max-w-7xl mx-auto">
           <div className="mb-0">
-            {/* Subtitle 1 */}
             <div className="bg-bg-light p-6 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] border border-border-light shadow-sm">
               <h3 className="text-xl sm:text-2xl md:text-4xl font-black text-primary mb-6 md:mb-8 tracking-tighter text-center md:text-left">
-                채널이 성장하면<br className="md:hidden"/> 다음과 같은 일이 생깁니다.
+                채널이 성장하면
+                <br className="md:hidden" /> 다음과 같은 일이 생깁니다.
               </h3>
               <div className="grid md:grid-cols-3 gap-4 md:gap-10">
                 {[
@@ -176,7 +180,6 @@ const handleSubmit = async (e: React.FormEvent) => {
       <section className="py-8 md:py-12 px-4 sm:px-6 lg:px-8 bg-bg-light border-t border-border-light">
         <div className="max-w-7xl mx-auto">
           <div className="mb-0">
-            {/* Subtitle 2 */}
             <div className="bg-white p-6 md:p-8 rounded-[1.5rem] md:rounded-[2.5rem] border border-border-light shadow-sm">
               <h3 className="text-xl sm:text-2xl md:text-4xl font-black text-primary mb-6 md:mb-8 tracking-tighter text-center md:text-left">
                 하지만, 동시에 이런 일도 생깁니다.
@@ -199,25 +202,27 @@ const handleSubmit = async (e: React.FormEvent) => {
           </div>
         </div>
       </section>
+
       {/* Section 4 */}
       <section className="py-8 md:py-12 px-4 sm:px-6 lg:px-8 bg-white border-t border-border-light">
         <div className="max-w-7xl mx-auto">
-          {/* Separate Check Section - Moved here */}
           <div className="max-w-4xl mx-auto mb-8 md:mb-12">
             <div className="bg-primary p-6 md:p-10 rounded-[1.5rem] md:rounded-[3rem] shadow-xl text-center flex flex-col justify-center items-center text-white relative overflow-hidden">
               <div className="absolute top-0 right-0 w-48 h-48 bg-white/5 rounded-full -mr-24 -mt-24 blur-3xl"></div>
               <div className="absolute bottom-0 left-0 w-48 h-48 bg-accent/10 rounded-full -ml-24 -mb-24 blur-3xl"></div>
               <p className="text-xl sm:text-2xl md:text-4xl lg:text-5xl font-black mb-6 md:mb-10 tracking-tighter leading-tight relative z-10">
-                채널은 <span className="text-accent">재산권</span>으로 등록해야<br/> 소유권이 생깁니다.
+                채널은 <span className="text-accent">재산권</span>으로 등록해야
+                <br />
+                소유권이 생깁니다.
               </p>
               <p className="text-base sm:text-lg md:text-2xl lg:text-3xl font-medium text-gray-300 leading-relaxed relative z-10 max-w-2xl">
-                그래서 많은 크리에이터들이<br/>
+                그래서 많은 크리에이터들이
+                <br />
                 자신의 채널을 재산권으로 보호하고 있습니다.
               </p>
             </div>
           </div>
 
-          {/* Trademark Case Studies */}
           <div className="mb-12 md:mb-16">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
               {[
@@ -228,8 +233,8 @@ const handleSubmit = async (e: React.FormEvent) => {
               ].map((item, i) => (
                 <div key={i} className="group flex flex-col items-center text-center bg-white p-6 md:p-8 rounded-[1.5rem] md:rounded-[2rem] border border-border-light shadow-sm hover:shadow-md transition-all">
                   <div className="w-20 h-20 md:w-32 md:h-32 bg-bg-light rounded-full overflow-hidden mb-4 md:mb-6 border border-border-light flex items-center justify-center p-3 md:p-4">
-                    <img 
-                      src={item.mainImg} 
+                    <img
+                      src={item.mainImg}
                       alt={`${item.name} 대표`}
                       className="max-w-full max-h-full object-contain transition-transform duration-500 group-hover:scale-110"
                       referrerPolicy="no-referrer"
@@ -244,7 +249,8 @@ const handleSubmit = async (e: React.FormEvent) => {
 
           <div className="mt-16 md:mt-24 mb-10 md:mb-16 text-left">
             <h3 className="text-xl sm:text-2xl md:text-4xl lg:text-5xl font-black text-primary leading-tight tracking-tighter">
-              유튜브 채널을 보호하는 재산권에는<br className="hidden md:block"/> <span className="text-accent">무엇이 있을까요?</span>
+              유튜브 채널을 보호하는 재산권에는
+              <br className="hidden md:block" /> <span className="text-accent">무엇이 있을까요?</span>
             </h3>
             <p className="text-base sm:text-lg md:text-2xl text-secondary/60 mt-3 font-medium">
               유튜브 채널은 아래 두 축으로 보호해야 합니다.
@@ -292,7 +298,8 @@ const handleSubmit = async (e: React.FormEvent) => {
             <div className="bg-white border border-border-light p-6 md:p-12 max-w-5xl mx-auto shadow-2xl rounded-[1.5rem] md:rounded-[3rem] relative overflow-hidden">
               <div className="absolute top-0 left-0 w-2 h-full bg-accent"></div>
               <h3 className="text-lg sm:text-xl md:text-3xl lg:text-4xl font-black text-primary leading-tight tracking-tighter mb-6 md:mb-10 text-left">
-                누가 먼저 등록해버리면<br/> 어떤 일이 생길까요?
+                누가 먼저 등록해버리면
+                <br /> 어떤 일이 생길까요?
               </h3>
               <div className="text-sm sm:text-base md:text-xl lg:text-2xl text-secondary/70 font-medium leading-relaxed space-y-3 md:space-y-5">
                 <p>"내가 먼저 채널을 만들었으니까 당연히 내 거 아닌가요?"</p>
@@ -300,7 +307,10 @@ const handleSubmit = async (e: React.FormEvent) => {
                 <div className="pt-4 md:pt-8">
                   <p className="text-primary font-bold">상표권과 디자인권은 누가 먼저 만들었는지보다</p>
                   <p className="mt-2 md:mt-4">
-                    <strong className="text-primary text-base sm:text-lg md:text-2xl lg:text-3xl font-black border-b-2 md:border-b-4 border-accent/30 pb-1 inline-block">누가 먼저 재산권을 신청했는지</strong>가 중요합니다.
+                    <strong className="text-primary text-base sm:text-lg md:text-2xl lg:text-3xl font-black border-b-2 md:border-b-4 border-accent/30 pb-1 inline-block">
+                      누가 먼저 재산권을 신청했는지
+                    </strong>
+                    가 중요합니다.
                   </p>
                 </div>
               </div>
@@ -308,7 +318,9 @@ const handleSubmit = async (e: React.FormEvent) => {
           </div>
 
           <div className="mt-16 md:mt-24 w-full">
-            <h4 className="text-xl sm:text-2xl md:text-5xl font-black text-primary mb-6 md:mb-10 text-center tracking-tighter">브랜드를 빼앗겼을때 생기는 <span className="text-accent">리스크</span></h4>
+            <h4 className="text-xl sm:text-2xl md:text-5xl font-black text-primary mb-6 md:mb-10 text-center tracking-tighter">
+              브랜드를 빼앗겼을때 생기는 <span className="text-accent">리스크</span>
+            </h4>
             <div className="grid md:grid-cols-2 gap-4 md:gap-8 max-w-6xl mx-auto">
               {[
                 {
@@ -343,7 +355,7 @@ const handleSubmit = async (e: React.FormEvent) => {
         <div className="max-w-5xl mx-auto text-center mb-8 md:mb-12">
           <h3 className="text-2xl md:text-4xl lg:text-5xl font-black text-primary leading-tight mb-4 md:mb-8 tracking-tighter">
             <span className="text-accent">지금</span> 준비하고 든든하게 운영하세요
-          </h3>      
+          </h3>
           <div className="flex flex-wrap justify-center gap-3 md:gap-4 mb-8 md:mb-12">
             {["구독자가 늘고", "조회수가 터지고", "굿즈 요청이 들어오고", "외부 협업 제안이 오면서"].map((item, i) => (
               <div key={i} className="bg-white px-5 py-2.5 md:px-8 md:py-4 rounded-full text-base md:text-xl text-primary font-black border border-border-light shadow-sm hover:border-accent transition-colors">
@@ -355,7 +367,8 @@ const handleSubmit = async (e: React.FormEvent) => {
           <div className="bg-white border-2 border-accent/20 p-8 md:p-16 mb-12 max-w-4xl mx-auto shadow-2xl rounded-[2rem] relative overflow-hidden">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-1 bg-accent"></div>
             <p className="text-primary font-black text-xl md:text-2xl lg:text-3xl leading-tight">
-              브랜드의 가치가 높아졌을 때는<br/>
+              브랜드의 가치가 높아졌을 때는
+              <br />
               <span className="text-accent">이미 누군가 먼저 등록받았을 지도 모릅니다.</span>
             </p>
           </div>
@@ -366,14 +379,11 @@ const handleSubmit = async (e: React.FormEvent) => {
       <section className="py-4 md:py-8 px-4 sm:px-6 lg:px-8 bg-bg-light border-t border-border-light">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-8 md:gap-12">
-            
-            {/* Section 4 */}
             <div className="flex flex-col">
-              {/* Trademark Graphic - Minimized */}
               <div className="w-full h-40 md:h-64 bg-white rounded-[1.5rem] md:rounded-[2rem] mb-6 md:mb-8 flex flex-col items-center justify-center gap-4 md:gap-6 border border-border-light shadow-xl relative overflow-hidden group">
                 <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary via-transparent to-transparent"></div>
                 <div className="relative z-10 w-16 h-16 md:w-28 md:h-28 bg-white rounded-full shadow-lg flex items-center justify-center border-4 md:border-8 border-primary transition-transform group-hover:scale-110">
-                   <span className="text-3xl md:text-6xl font-black text-primary">R</span>
+                  <span className="text-3xl md:text-6xl font-black text-primary">R</span>
                 </div>
                 <h3 className="text-2xl md:text-4xl font-black text-primary tracking-tighter relative z-10">
                   상표 등록의 <span className="text-accent">효과</span>
@@ -403,9 +413,7 @@ const handleSubmit = async (e: React.FormEvent) => {
               </div>
             </div>
 
-            {/* Section 6 */}
             <div className="flex flex-col">
-              {/* Design Graphic - Minimized */}
               <div className="w-full h-40 md:h-64 bg-white rounded-[1.5rem] md:rounded-[2rem] mb-6 md:mb-8 flex flex-col items-center justify-center gap-4 md:gap-6 border border-border-light shadow-xl relative overflow-hidden group">
                 <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-accent via-transparent to-transparent"></div>
                 <div className="relative z-10 w-16 h-16 md:w-28 md:h-28 border-4 md:border-8 border-accent rounded-[1.2rem] md:rounded-[2rem] flex items-center justify-center -rotate-6 bg-white shadow-xl transition-transform group-hover:scale-110">
@@ -438,7 +446,6 @@ const handleSubmit = async (e: React.FormEvent) => {
                 ))}
               </div>
             </div>
-
           </div>
         </div>
       </section>
@@ -455,7 +462,8 @@ const handleSubmit = async (e: React.FormEvent) => {
                 <span className="text-accent">유튜브 IP 패키지</span>
               </h3>
               <p className="text-base sm:text-lg md:text-2xl text-secondary/60 font-medium leading-relaxed max-w-3xl mx-auto">
-                상표나 디자인 등록이 필요한 필수 요소만 선별하여<br className="hidden md:block"/>
+                상표나 디자인 등록이 필요한 필수 요소만 선별하여
+                <br className="hidden md:block" />
                 <strong className="text-primary font-black">유튜버 캐릭터 IP 패키지로 제안</strong>드립니다.
               </p>
             </div>
@@ -497,7 +505,8 @@ const handleSubmit = async (e: React.FormEvent) => {
                 </div>
               ))}
             </div>
-      {/* Section 8 & CTA */}
+
+            {/* Section 8 & CTA */}
             <div className="grid md:grid-cols-2 gap-6 md:gap-8 relative z-10">
               <div className="bg-bg-light border border-border-light p-6 md:p-8 shadow-sm rounded-[1.5rem] md:rounded-[2rem] relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16"></div>
@@ -542,7 +551,6 @@ const handleSubmit = async (e: React.FormEvent) => {
               </div>
             </div>
 
-            {/* Pricing Table */}
             <div className="mt-12 md:mt-16 relative z-10">
               <div className="overflow-x-auto rounded-[1.5rem] md:rounded-[2rem] border border-border-light shadow-sm">
                 <table className="w-full border-collapse bg-white min-w-[600px] md:min-w-0">
@@ -587,7 +595,7 @@ const handleSubmit = async (e: React.FormEvent) => {
           <div className="bg-white p-6 md:p-12 rounded-[2rem] md:rounded-[3rem] border border-border-light shadow-xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 rounded-full -mr-32 -mt-32 blur-3xl"></div>
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/5 rounded-full -ml-32 -mb-32 blur-3xl"></div>
-            
+
             <div className="relative z-10 text-center">
               <h2 className="text-xl sm:text-2xl md:text-5xl font-black text-primary mb-6 md:mb-8 tracking-tighter">
                 <span className="text-accent">전문 특허법인</span>의 등록 서비스
@@ -596,21 +604,26 @@ const handleSubmit = async (e: React.FormEvent) => {
               <div className="flex flex-col md:flex-row justify-center items-center gap-6 md:gap-12 mb-8 md:mb-10">
                 <div className="flex flex-col items-center">
                   <span className="text-secondary/50 text-[10px] md:text-xs font-bold uppercase tracking-widest mb-1">국내 상표 출원</span>
-                  <span className="text-2xl sm:text-3xl md:text-5xl font-black text-primary flex items-baseline">40,000<span className="text-accent text-lg md:text-2xl ml-1">+</span><span className="text-xs md:text-lg ml-1 text-secondary/40">건</span></span>
+                  <span className="text-2xl sm:text-3xl md:text-5xl font-black text-primary flex items-baseline">
+                    40,000<span className="text-accent text-lg md:text-2xl ml-1">+</span><span className="text-xs md:text-lg ml-1 text-secondary/40">건</span>
+                  </span>
                 </div>
                 <div className="w-px h-12 bg-border-light hidden md:block"></div>
                 <div className="flex flex-col items-center">
                   <span className="text-secondary/50 text-[10px] md:text-xs font-bold uppercase tracking-widest mb-1">국내 디자인 출원</span>
-                  <span className="text-2xl sm:text-3xl md:text-5xl font-black text-primary flex items-baseline">14,000<span className="text-accent text-lg md:text-2xl ml-1">+</span><span className="text-xs md:text-lg ml-1 text-secondary/40">건</span></span>
+                  <span className="text-2xl sm:text-3xl md:text-5xl font-black text-primary flex items-baseline">
+                    14,000<span className="text-accent text-lg md:text-2xl ml-1">+</span><span className="text-xs md:text-lg ml-1 text-secondary/40">건</span>
+                  </span>
                 </div>
               </div>
 
               <div className="space-y-4 md:space-y-8">
                 <p className="text-lg sm:text-xl md:text-3xl text-secondary font-bold leading-tight">
-                  경험이 풍부한 특허법인이<br className="hidden md:block" />
+                  경험이 풍부한 특허법인이
+                  <br className="hidden md:block" />
                   귀하의 브랜드와 콘텐츠를 <span className="text-primary border-b-2 md:border-b-4 border-accent/30">재산권</span>으로 보호해드립니다.
                 </p>
-                
+
                 <div className="flex justify-center gap-2 md:gap-3">
                   <div className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-accent/30"></div>
                   <div className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-accent/30"></div>
@@ -621,16 +634,14 @@ const handleSubmit = async (e: React.FormEvent) => {
           </div>
         </div>
       </section>
+
       {/* Section 10: Process & Application Form */}
       <section className="py-4 md:py-8 px-4 sm:px-6 lg:px-8 bg-bg-light">
         <div className="max-w-7xl mx-auto bg-white shadow-2xl border border-border-light flex flex-col lg:flex-row rounded-[2rem] md:rounded-[3rem] overflow-hidden">
           <div className="lg:w-5/12 bg-primary text-white p-6 md:p-12 flex flex-col justify-center relative">
             <div className="absolute inset-0 opacity-10 bg-[url('https://picsum.photos/seed/pattern/800/800')] bg-cover mix-blend-overlay"></div>
             <div className="relative z-10">
-              <h3
-                className="text-xl sm:text-2xl md:text-4xl font-black mb-6 md:mb-10 tracking-tighter"
-                style={{ color: "white" }}
-              >
+              <h3 className="text-xl sm:text-2xl md:text-4xl font-black mb-6 md:mb-10 tracking-tighter" style={{ color: "white" }}>
                 진행 절차
               </h3>
 
@@ -689,13 +700,9 @@ const handleSubmit = async (e: React.FormEvent) => {
 
                 <select
                   name="goods_services"
-                  value={form.goods_services}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      goods_services: e.target.value,
-                    }))
-                  }
+                  value={goodsServices}
+                  onChange={(e) => setGoodsServices(e.target.value)}
+                  className="w-full bg-bg-light border border-border-light px-5 py-3 md:py-4 text-base md:text-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all appearance-none text-secondary rounded-xl md:rounded-2xl font-medium"
                 >
                   <option value="">선택해주세요</option>
                   <option value="유튜브 콘텐츠">유튜브 / 콘텐츠</option>
@@ -800,10 +807,11 @@ const handleSubmit = async (e: React.FormEvent) => {
           </div>
         </div>
       </section>
+
       {/* Footer */}
-    <footer className="bg-[#0f1738] text-[#C8CCD6] py-6 border-t border-white/5">
-      <div className="max-w-7xl mx-auto px-4 md:px-12">
-        <div className="mb-4">
+      <footer className="bg-[#0f1738] text-[#C8CCD6] py-6 border-t border-white/5">
+        <div className="max-w-7xl mx-auto px-4 md:px-12">
+          <div className="mb-4">
             <div className="flex items-center gap-2 md:gap-3 mb-4 text-xl md:text-2xl">
               <div className="w-[1em] h-[1em] bg-[#FF5A00] flex-shrink-0"></div>
               <div className="font-black tracking-tighter text-white text-2xl md:text-3xl">IPEDIA.</div>
@@ -815,16 +823,16 @@ const handleSubmit = async (e: React.FormEvent) => {
               <p>kjlee@ipedia.kr</p>
               <p>kjlee@sungampat.com</p>
             </div>
-        </div>
+          </div>
 
-        <div className="pt-6 border-t border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center text-[10px] tracking-[0.2em] font-bold gap-4 md:gap-0 text-white/70">
-          <p className="leading-relaxed">© 2025 IPEDIA INTELLECTUAL PROPERTY SOLUTION. ALL RIGHTS RESERVED.</p>
-          <div className="space-x-6 uppercase">
-            <span className="text-[#FF5A00]">Built for Innovators</span>
+          <div className="pt-6 border-t border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center text-[10px] tracking-[0.2em] font-bold gap-4 md:gap-0 text-white/70">
+            <p className="leading-relaxed">© 2025 IPEDIA INTELLECTUAL PROPERTY SOLUTION. ALL RIGHTS RESERVED.</p>
+            <div className="space-x-6 uppercase">
+              <span className="text-[#FF5A00]">Built for Innovators</span>
+            </div>
           </div>
         </div>
-      </div>
-    </footer>
+      </footer>
     </div>
   );
 }
