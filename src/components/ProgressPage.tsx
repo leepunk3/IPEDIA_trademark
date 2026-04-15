@@ -566,7 +566,7 @@ export default function ProgressPage() {
         applicant_code: applicant.applicant_code || "",
         applicant_code_issue_request: !!applicant.applicant_code_issue_request,
         trademark_name: applicant.trademark_name || data?.channel_name || "",
-        goods_services: applicant.goods_services || "",
+        goods_services: applicant.goods_services || data?.goods_services || "",
         class_codes: applicant.class_codes || "",
         character_name: applicant.character_name || "",
         design_product_name: applicant.design_product_name || "",
