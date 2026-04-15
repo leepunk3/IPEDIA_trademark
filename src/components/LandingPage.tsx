@@ -688,14 +688,13 @@ const handleSubmit = async (e: React.FormEvent) => {
 
                 <select
                   name="goods_services"
-                  value={goodsServices}
-                  onChange={(e) => {
-                    setGoodsServices(e.target.value);
-                    if (e.target.value !== "기타") {
-                      setCustomGoods("");
-                    }
-                  }}
-                  className="w-full bg-bg-light border border-border-light px-5 py-3 md:py-4 text-base md:text-xl focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/10 transition-all rounded-xl md:rounded-2xl font-medium"
+                  value={form.goods_services}
+                  onChange={(e) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      goods_services: e.target.value,
+                    }))
+                  }
                 >
                   <option value="">선택해주세요</option>
                   <option value="유튜브 콘텐츠">유튜브 / 콘텐츠</option>
