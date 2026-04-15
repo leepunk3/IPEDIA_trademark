@@ -123,20 +123,72 @@ function normalizeInput(body: TrademarkReviewRequest) {
 
 function buildSystemInstruction(): string {
   return `
-너는 한국 상표법 제33조 제1항 및 제34조 제1항의 절대적 등록요건을 검토하는 상표 심사 보조 AI다.
+너는 한국 상표법의 절대적 부등록사유를 1차 검토하는 보조 AI다.
+특히 상표법 제33조 제1항 제1호부터 제6호를 검토한다.
 
-반드시 다음 원칙을 따른다.
+반드시 다음 순서로 판단한다.
 
 1. 표장을 의미 단위로 분해한다.
-2. 각 구성요소의 의미를 설명한다.
-3. 각 구성요소가 지정상품/서비스와의 관계에서 보통명칭, 관용표장, 기술적 표장, 품질/효능/용도/업종/제공장소 등을 직접 표시하는지 검토한다.
-4. 판단은 반드시 지정상품/서비스와의 관계에서 한다.
-5. 표장 전체가 식별력 없는 요소들만으로 이루어진 경우에는 등록가능성이 낮다고 본다.
-6. 일부 요소가 식별력이 없더라도 전체 조합이 출처표시로 인식될 수 있으면 무조건 HIGH로 단정하지 않는다.
-7. 특히 "~만으로 된 상표"인지 엄격하게 판단한다.
-8. 단어가 일반명사라는 이유만으로 곧바로 HIGH로 판단하지 말고, 지정상품/서비스와의 관계를 중심으로 판단한다.
-9. 결과는 반드시 한국어로 작성한다.
-10. 반드시 JSON 객체만 출력한다. 마크다운, 코드블록, 설명문을 붙이지 않는다.
+2. 업종/서비스 명칭, 상품 종류 명칭, 설명적 표현, 관용적 표현, 단순 위치/지역명 등은 원칙적으로 식별력이 없는 부분으로 보고 제거 후보로 검토한다.
+3. 다만 그 요소가 전체 상표의 핵심 식별 요소로 기능하는 경우에는 제거하지 않는다. 이 예외는 매우 제한적으로 인정한다.
+4. 결합 상표에서 식별력 없는 부분을 제거하고, 실제 출처 식별 기능을 하는 핵심 식별 요소를 도출한다.
+5. 핵심 식별 요소를 기준으로 제33조 제1항 제1호부터 제6호 해당 여부를 판단한다.
+6. 판단은 반드시 지정상품/서비스와의 관계를 중심으로 한다.
+7. 애매하거나 법률적 추가 검토가 필요하면 REVIEW_NEEDED로 판단한다.
+8. JSON 객체만 출력한다.
+
+[판단 기준]
+
+- G01 보통명칭:
+  지정상품의 명칭, 약칭, 속칭 등 거래사회에서 실제 상품을 지칭하는 명칭.
+  핵심 단어가 보통명칭이면 HIGH.
+  보통명칭 + 식별력 있는 단어면 LOW 또는 REVIEW_NEEDED.
+  보통명칭 + 부수적 단어면 HIGH.
+
+- G02 관용표장:
+  동종업계에서 일반적으로 자유롭게 사용되는 표장.
+  핵심 단어가 관용 명칭이면 HIGH.
+  관용 명칭 + 식별력 있는 단어면 LOW 또는 REVIEW_NEEDED.
+  관용 명칭 + 부수적 단어면 HIGH.
+
+- G03 기술적 표장:
+  성질, 산지, 품질, 원재료, 효능, 용도, 수량, 형상, 가격, 생산방법, 가공방법, 사용방법, 시기를 직감하는 명칭.
+  품질(BEST, PREMIUM, SUPER), 원재료, 효능, 용도, 수량·규격·가격, 생산·가공·사용방법, 시기를 직접 나타내면 HIGH.
+  간접적·암시적이면 LOW 또는 REVIEW_NEEDED.
+
+- G04 현저한 지리적 명칭:
+  국가명, 도시명, 관광지, 유명 지명 등.
+  핵심 단어가 지리적 명칭이면 HIGH.
+  지리적 명칭 + 식별력 있는 단어면 LOW 또는 REVIEW_NEEDED.
+  지리적 명칭 + 부수적 단어면 HIGH.
+  지리적 명칭 + 업종 단순 결합이면 HIGH.
+
+- G05 흔한 성이나 명칭:
+  김, 이, 박 등 흔한 성씨나 흔한 명칭.
+  핵심 단어가 이에 해당하면 HIGH.
+  흔한 성명 + 식별력 있는 단어면 LOW 또는 REVIEW_NEEDED.
+  흔한 성명 + 부수적 단어면 HIGH.
+
+- G06 흔한 표장:
+  1글자 문자, 2글자 알파벳, 단순 숫자, 단순 도형 등 간단하고 흔한 표장.
+  핵심 단어가 이에 해당하면 HIGH.
+  흔한 표장 + 식별력 있는 단어면 LOW 또는 REVIEW_NEEDED.
+  흔한 표장 + 부수적 단어면 HIGH.
+
+[출력 원칙]
+- HIGH: 절대적 부등록 사유 해당 가능성이 높음
+- REVIEW_NEEDED: 애매하거나 법률적 추가 검토 필요
+- LOW: 현 단계에서 절대적 부등록 사유 가능성이 비교적 낮음
+
+[ai_review_code 기준]
+- G01: 보통명칭
+- G02: 관용표장
+- G03: 기술적 표장
+- G04: 현저한 지리적 명칭
+- G05: 흔한 성이나 명칭
+- G06: 흔한 표장
+- OK: 현재 기준상 절대적 부등록 사유가 뚜렷하지 않음
+- REVIEW: 경계사안 또는 복합적 판단 필요
 `.trim();
 }
 
@@ -158,98 +210,20 @@ function buildUserPrompt(input: {
   } = input;
 
   return `
-다음 상표를 한국 상표법 제33조 제1항 제1호부터 제6호 기준으로 검토하라.
+[검토 대상]
+- 상표명: ${markText}
+- 지정상품/서비스: ${goodsServices.join(", ") || "(없음)"}
+- 류: ${classCodes.join(", ") || "(없음)"}
+- 채널명/브랜드 참고정보: ${channelName || "(없음)"}
+- 채널 URL: ${channelUrl || "(없음)"}
+- 관심 유형: ${interestType || "(없음)"}
 
-[표장]
-${markText}
-
-[지정상품/서비스]
-${goodsServices.join(", ") || "(없음)"}
-
-[1단계: 식별력 없는 요소 제거]
-
-다음 요소는 원칙적으로 식별력이 없는 부분으로 간주하고 제거한다:
-
-- 업종/서비스 명칭 (치과, 병원, 뉴스, 공방, 스튜디오, 카페, 마켓, 센터 등)
-- 상품/서비스 종류 명칭
-- 설명적 표현 (프리미엄, 베스트, 공식, 정품 등)
-- 관용적 표현
-- 단순 지리명 (서울, 강남 등)
-
-단, 해당 요소가 전체 상표의 핵심 식별 요소로 기능하는 경우에는 제거하지 않는다 (매우 제한적으로 인정).
-
-[2단계: 핵심 식별 요소 추출]
-
-- 식별력 없는 요소를 제거하고 핵심 단어만 남긴다
-- 반드시 아래 3가지를 도출한다:
-
-- 원본 상표
-- 식별력 없는 부분
-- 핵심 식별 요소
-
-[3단계: 법적 판단]
-
-다음 기준으로 판단한다:
-
-① 보통명칭 (G01)
-- 핵심 단어가 상품의 일반 명칭이면 → HIGH
-- 보통명칭 + 식별력 있는 단어 → LOW 또는 REVIEW_NEEDED
-- 보통명칭 + 부수적 단어 → HIGH
-
-② 관용표장 (G02)
-- 업계에서 일반적으로 쓰이는 표현이면 → HIGH
-- 관용표장 + 식별력 단어 → LOW 또는 REVIEW_NEEDED
-- 관용표장 + 부수적 단어 → HIGH
-
-③ 기술적 표장 (G03)
-- 품질, 효능, 용도, 원재료, 가격, 방법 등을 직감하면 → HIGH
-- 간접적/암시적이면 → REVIEW_NEEDED 또는 LOW
-
-세부 기준:
-- 품질: PREMIUM, BEST 등
-- 원재료: 실제 재료명
-- 효능: 효과 표현
-- 용도: 사용 목적
-- 수량/규격: 100ml, 1kg 등
-- 방법: 수제, 훈제 등
-- 시기: 여름, 겨울 등
-
-④ 지리적 명칭 (G04)
-- 국가, 도시, 지역명 → HIGH
-- 지리명 + 업종 → HIGH
-- 지리명 + 식별력 단어 → REVIEW_NEEDED 또는 LOW
-
-⑤ 흔한 성명 (G05)
-- 김, 이, 박 등 → HIGH
-- 성명 + 식별력 단어 → REVIEW_NEEDED 또는 LOW
-
-⑥ 간단표장 (G06)
-- 1글자, 2글자 알파벳, 숫자 등 → HIGH
-- 단순 조합 → HIGH
-
-[최종 판단 기준]
-
-- 식별력 없는 요소만으로 구성 → HIGH
-- 일부 식별력 요소 존재 → LOW 또는 REVIEW_NEEDED
-- 반드시 하나 선택:
-  HIGH / REVIEW_NEEDED / LOW
-
-[출력 형식]
-
-반드시 아래 JSON만 출력하라:
-
-{
-  "risk_level": "LOW | REVIEW_NEEDED | HIGH",
-  "ai_review_code": "NONE | DESCRIPTIVE | GENERIC | GEOGRAPHIC | NON_DISTINCTIVE | OTHER",
-  "reason": "판단 이유 (2~5문장)",
-  "needs_manual_review": true,
-  "suggested_message": "고객 안내 메시지",
-  "analysis": {
-    "original_mark": "${markText}",
-    "removed_terms": ["식별력 없는 단어"],
-    "core_terms": ["핵심 식별 요소"]
-  }
-}
+[작업 지시]
+1. 원본 상표를 의미 단위로 분해하라.
+2. 식별력 없는 부분과 핵심 식별 요소를 도출하라.
+3. 핵심 식별 요소를 기준으로 G01~G06을 판단하라.
+4. 지정상품/서비스와의 관계를 반드시 설명하라.
+5. 최종 출력은 JSON 객체 하나만 반환하라.
 `.trim();
 }
 
@@ -364,7 +338,7 @@ function normalizeAiResult(raw: any): TrademarkReviewResult {
   const defaultResult: TrademarkReviewResult = {
     risk_level: "REVIEW_NEEDED",
     ai_review_code: "REVIEW",
-    reason: "AI 응답이 불완전하여 수동 검토가 필요합니다.",
+    reason: "",
     component_analysis: [],
     needs_manual_review: true,
   };
@@ -383,12 +357,14 @@ function normalizeAiResult(raw: any): TrademarkReviewResult {
   const code =
     ["G01", "G02", "G03", "G04", "G05", "G06", "OK", "REVIEW"].includes(raw.ai_review_code)
       ? raw.ai_review_code
-      : "REVIEW";
+      : risk === "LOW"
+        ? "OK"
+        : "REVIEW";
 
   const reason =
     typeof raw.reason === "string" && raw.reason.trim()
       ? raw.reason.trim()
-      : defaultResult.reason;
+      : "";
 
   const componentAnalysis: ComponentAnalysisItem[] = Array.isArray(raw.component_analysis)
     ? raw.component_analysis
@@ -409,19 +385,13 @@ function normalizeAiResult(raw: any): TrademarkReviewResult {
   let needsManualReview =
     typeof raw.needs_manual_review === "boolean"
       ? raw.needs_manual_review
-      : true;
-
-  // 안전장치
-  if (!reason) {
-    needsManualReview = true;
-  }
+      : risk !== "LOW";
 
   if (risk === "HIGH" && code === "OK") {
-    needsManualReview = true;
     return {
       risk_level: "REVIEW_NEEDED",
       ai_review_code: "REVIEW",
-      reason: "AI 응답의 위험도와 코드가 상충하여 수동 검토가 필요합니다.",
+      reason: reason || "자동 검토 결과에 추가 확인이 필요합니다.",
       component_analysis: componentAnalysis,
       needs_manual_review: true,
     };
