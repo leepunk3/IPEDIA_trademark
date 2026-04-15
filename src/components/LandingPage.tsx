@@ -88,10 +88,11 @@ const handleSubmit = async (e: React.FormEvent) => {
         "Content-Type": "text/plain;charset=utf-8",
       },
       body: JSON.stringify({
-        channel_input: channelInput,
-        goods_services: finalGoodsServices,
-        email: email,
-        interest_type: interestType,
+        channel_input: form.channel_input,
+        goods_services: form.goods_services,
+        email: form.email,
+        interest_type: form.interest_type,
+        privacy_agree: form.privacy_agree,
         privacy_agree: privacyAgree ? "Y" : "N",
       }),
     });
