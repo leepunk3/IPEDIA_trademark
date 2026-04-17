@@ -328,7 +328,7 @@ function ReviewHero({
         - 채널명: {trademarkName || "채널명 미입력"}
       </p>
       <p className="text-medium font-medium text-yellow-300">
-        - 상품/서비스 종류: {goodsServices || "상품/서비스 종류 미입력"}
+        - 상품/서비스 종류: {form.goods_services || "상품/서비스 종류 미입력"}
       </p>
     </div>
 
