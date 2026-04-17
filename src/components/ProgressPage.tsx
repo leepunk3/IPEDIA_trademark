@@ -324,15 +324,15 @@ function ReviewHero({
     </div>
 
     <div className="mb-2">
-      <p className="text-sm font-medium text-yellow-300">
+      <p className="text-medium font-medium text-yellow-300">
         채널명: {trademarkName || "채널명 미입력"}
       </p>
-      <p className="text-sm font-medium text-yellow-300">
+      <p className="text-medium font-medium text-yellow-300">
         상품/서비스 종류: {goodsServices || "상품/서비스 종류 미입력"}
       </p>
     </div>
 
-    <h2 className="mb-2 text-2xl font-bold">{trademarkName || "채널명 미입력"}</h2>
+    <h2 className="mb-2 text-3xl font-bold text-yellow-300">{trademarkName || "채널명 미입력"}</h2>
 
     <p className="mb-4 text-sm leading-7 text-gray-200">{titleMap[resultType]}</p>
 
